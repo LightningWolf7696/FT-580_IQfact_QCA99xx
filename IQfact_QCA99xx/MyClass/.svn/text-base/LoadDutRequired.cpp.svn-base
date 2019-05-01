@@ -1,0 +1,108 @@
+#include "../StdAfx.h"
+#include "LoadDutRequired.h"
+#include <io.h>
+
+
+CLoadDutRequired::CLoadDutRequired(void)
+{
+}
+
+CLoadDutRequired::~CLoadDutRequired(void)
+{
+
+}
+
+BOOL CLoadDutRequired::START(BOOL bRetry, LPSTR lpszRunInfo)
+{
+	AFX_MANAGE_STATE(AfxGetStaticModuleState());	
+	char szMessage[DLL_INFO_SIZE]={0};	
+	char szSourcePath[MAX_PATH]={0};
+	char szDestinationPath[MAX_PATH]={0};
+	TCHAR szCheckSum[32]={0};
+	
+	
+	GetLocalDirectory(g_GlobalInfo.szLocalPath,szMessage);
+	sprintf_s(szSourcePath,MAX_PATH,"%s%s\\%s", g_GlobalInfo.szLocalPath,g_GlobalInfo.CUSTOMER, g_GlobalInfo.szPN);
+	sprintf_s(szDestinationPath,MAX_PATH,"%sOEM\\%s", g_GlobalInfo.szLocalPath,g_GlobalInfo.CUSTOMER);
+
+	//Check use IQflex or IQxel
+	CheckEquipment();
+
+	CopyAllFolders(szSourcePath, szDestinationPath);
+
+	strcpy_s(lpszRunInfo,DLL_INFO_SIZE,"Success to LoadDutRequired.");
+	return TRUE;
+}
+
+void CLoadDutRequired::CopyAllFolders(LPSTR szSrcPath, LPSTR szDestPath)
+{
+	/*
+	/S 複製每個目錄及其包含的子目錄
+	/E 複製每個目錄及其包含的子目錄，也複製空目錄
+	/D 複製發生變更的檔案
+	/Y 所有覆蓋的詢問都回答 YES
+	*/
+
+	char szCmd[MAX_PATH]={0};
+	sprintf_s(szCmd,sizeof(szCmd),"xcopy \"%s\" \"%s\" /e /r /y",szSrcPath,szDestPath);	
+	WinExec(szCmd,SC_MINIMIZE);
+
+	return;
+}
+
+void CLoadDutRequired::CheckEquipment()
+{
+	TCHAR szFileName[MAX_PATH]={0};
+	TCHAR szBuffer[MAX_PATH]={0};
+	TCHAR szName[10]={0};
+	sprintf_s(szFileName,sizeof(szFileName),"%sENV\\ConfigStation.ini",g_GlobalInfo.szLocalPath);
+	GetPrivateProfileString("GLOBAL_FILE_PATH",	"ENV_CONFIG_PATH",_T(""),szBuffer,MAX_PATH,szFileName);
+	GetPrivateProfileString("PROGRAM_ENVIRONMENT_SET",	"ENV_ANALYZER_TYPE",_T("IQVIEW"),szName,sizeof(szName),szBuffer);
+	sprintf_s(szFileName,MAX_PATH,"%s%s\\%s\\Test.txt", g_GlobalInfo.szLocalPath,g_GlobalInfo.CUSTOMER, g_GlobalInfo.szPN);		
+	if(strncmp(szName, _T("IQXEL"),5) == NULL)
+	{
+		ReplaceFileString(szFileName, _T(".mod"),_T(".iqvsg"));
+		ReplaceFileString(szFileName, _T(".ref"),_T(".iqref"));
+		ReplaceFileString(szFileName, _T("IQTESTER_TYPE [Integer]  = 0"),_T("IQTESTER_TYPE [Integer]  = 1"));
+		ReplaceFileString(szFileName, _T("/mod"),_T("/iqvsg"));
+		
+		
+	}else{
+		ReplaceFileString(szFileName, _T(".iqvsg"),_T(".mod"));
+		ReplaceFileString(szFileName, _T(".iqref"),_T(".ref"));
+		ReplaceFileString(szFileName, _T("IQTESTER_TYPE [Integer]  = 1"),_T("IQTESTER_TYPE [Integer]  = 0"));
+		ReplaceFileString(szFileName, _T("/iqvsg"),_T("/mod"));
+	}
+	return;
+}
+void CLoadDutRequired::ReplaceFileString(LPSTR szFileName, LPSTR szSrc, LPSTR szDest)
+{
+	FILE *stream;
+	int FileNo;
+	long streamLength, ActuallyRead;
+	TCHAR *Content = NULL;		
+	CString strContent;
+
+	if((stream = fopen(szFileName, _T("rb"))) != NULL)
+	{
+		FileNo = _fileno(stream);
+		streamLength = _filelength(FileNo);
+
+		Content = (TCHAR*)malloc((size_t)(streamLength+1));
+		memset(Content, 0x00, (streamLength+1));
+		fseek(stream, SEEK_SET, 0);
+		ActuallyRead = (long)fread(Content, sizeof(TCHAR), streamLength, stream);
+		strContent.Format(_T("%s"), Content);		
+		strContent.Replace(szSrc, szDest);
+		fclose(stream) ;
+	}
+
+	if((stream = fopen(szFileName, _T("wb"))) != NULL)
+	{
+		fprintf(stream, "%s", strContent.GetBuffer());
+		fclose(stream) ;
+	}
+	if(Content)	free(Content);
+
+	return;
+}

@@ -1,0 +1,118 @@
+#pragma once
+
+#include "../CommFunc.h"
+
+
+class COemTest
+{
+public:
+	COemTest(void);
+public:
+	~COemTest(void);
+
+private:
+	#define XML_DATA_SIZE 16
+	enum TEST_TYPE
+	{
+		NOT_DEFINE_TEST = -1,		
+		WIFI_EVM_TEST = 0,
+		WIFI_MASK_TEST = 1,
+		WIFI_RXPER_TEST = 2,
+		WIFI_RX_SWEEP_TEST = 3,
+		TEST_RESULT = 99
+	};
+
+	typedef enum _ANTENNA_PATH{
+		ANTENNA_A 	= 0x01,
+		ANTENNA_B 		,
+		ANTENNA_AB		,
+		ANTENNA_C		,
+		ANTENNA_AC		,
+		ANTENNA_BC		,
+		ANTENNA_ABC		,
+		ANTENNA_D		,
+		ANTENNA_AD		,
+		ANTENNA_BD		,
+		ANTENNA_ABD		,
+		ANTENNA_CD		,
+		ANTENNA_ACD		,
+		ANTENNA_BCD		,
+		ANTENNA_ABCD	
+	} ANTENNA_PATH;
+
+	typedef struct _XML_ANTENNA
+	{
+		char A[XML_DATA_SIZE];
+		char B[XML_DATA_SIZE];
+		char C[XML_DATA_SIZE];
+		char D[XML_DATA_SIZE];
+	}XML_ANTENNA;
+
+	typedef struct _XML_DATA
+	{
+		char szFreq[XML_DATA_SIZE];
+		char szDataRate[XML_DATA_SIZE];
+		char szBandWidth[XML_DATA_SIZE];
+		char szExpectPwr[XML_DATA_SIZE];
+		char szActualPwr[XML_DATA_SIZE];
+		char szPPM[XML_DATA_SIZE];
+		char szEvm[XML_DATA_SIZE];
+		char szMaskViolationPercent[XML_DATA_SIZE];
+		char szRxPER[XML_DATA_SIZE];
+		char szStartRxPER[XML_DATA_SIZE];
+		char szStopRxPER[XML_DATA_SIZE];
+		XML_ANTENNA	Antenna;
+	}XML_DATA;
+
+	typedef struct _WIFI_TEST_DATA
+	{		
+		XML_DATA Evm;
+		XML_DATA Mask;
+		XML_DATA RxPER;
+		XML_DATA RxSweep;
+	}WIFI_TEST_DATA, *pWIFI_TEST_DATA;
+
+	typedef struct _BT_TEST_DATA
+	{		
+		char szTestFreq[16];
+		char szActualPwr[16];
+		char szDataRate[32];
+		char szEvm[16];
+		char szExpectPwr[16];
+		char szFreqErr[16];		
+	}BT_TEST_DATA, *pBT_TEST_DATA;
+
+	typedef struct _MAC_DATA
+	{		
+		char	szWiFiMAC[32];
+	}MAC_DATA, *pMAC_DATA;
+
+
+
+	WIFI_TEST_DATA	m_WiFiTestData;
+	BT_TEST_DATA	m_BtTestData;
+	MAC_DATA		m_MacData;
+	ERRORREPORT		m_ErrorReport;	
+	char			m_TrimData[16];
+
+	TEST_TYPE		m_eTestType;
+	double			m_dbTestTimeCost;
+	BOOL			m_FinishedKeyWord;
+	TCHAR			m_szCurrTestInfo[64];
+public:
+	TM_RETURN START(funcGetMessage cbListMessage, funcGetMessage cbXmlMessage, funcGetMessage cbSfcsSpecMessage, funcGetMessage cbSfcsResultMessage, ERRORREPORT &ErrorReport);
+	void CLEAN();
+private:
+	BOOL CombineMessage(LPSTR lpszSrcData, LPSTR lpszAvailData, int nAvailLens, LPSTR szKey);
+	void SeparateData(LPSTR lpszMessage);
+	void CollectTestData(funcGetMessage cbListMessage, funcGetMessage cbXmlMessage, funcGetMessage cbSfcsSpecMessage, funcGetMessage cbSfcsResultMessage, LPSTR lpszMessage);	
+	void GetXmlTestInfo(LPSTR lpszMessage, LPSTR szKeyName, LPSTR szResultType, LPSTR szSingleData);
+	void CreateErrorReport(LPSTR lpszMessage, LPSTR szKeyName, LPSTR szResultType, LPSTR szActual, LPSTR szFailTest, LPSTR szErrorCode);
+	void CleanErrorReport();
+	LPSTR SyncAntenna(XML_ANTENNA Antenna, BOOL ToSFCS=FALSE);
+	void ExternalController();
+	void CreateXmlData(funcGetMessage cbXmlMessage, XML_DATA TestItem, LPSTR szDataName, LPSTR szDataValue);
+	void CreateErrorData(XML_DATA TestData, LPSTR szErrorKey);
+	void ShowListDataOnly(funcGetMessage cbListMessage, LPSTR lpszMessage);
+
+};

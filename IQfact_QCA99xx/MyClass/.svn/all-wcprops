@@ -1,0 +1,137 @@
+K 25
+svn:wc:ra_dav:version-url
+V 45
+/FT-389/!svn/ver/13/SRC/IQfact/IQfact/MyClass
+END
+PreLoadImage.h
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/FT-389/!svn/ver/13/SRC/IQfact/IQfact/MyClass/PreLoadImage.h
+END
+SfcsExternalData.h
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/FT-389/!svn/ver/1/SRC/IQfact/IQfact/MyClass/SfcsExternalData.h
+END
+LoadDutRequired.h
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/FT-389/!svn/ver/1/SRC/IQfact/IQfact/MyClass/LoadDutRequired.h
+END
+WiFiTerminate.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/FT-389/!svn/ver/1/SRC/IQfact/IQfact/MyClass/WiFiTerminate.cpp
+END
+WiFiTerminate.h
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/FT-389/!svn/ver/1/SRC/IQfact/IQfact/MyClass/WiFiTerminate.h
+END
+XmlExternalHeader.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 66
+/FT-389/!svn/ver/1/SRC/IQfact/IQfact/MyClass/XmlExternalHeader.cpp
+END
+MakeTestResultLog.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 66
+/FT-389/!svn/ver/1/SRC/IQfact/IQfact/MyClass/MakeTestResultLog.cpp
+END
+WiFiInitialize.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/FT-389/!svn/ver/1/SRC/IQfact/IQfact/MyClass/WiFiInitialize.cpp
+END
+OemTest.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 57
+/FT-389/!svn/ver/13/SRC/IQfact/IQfact/MyClass/OemTest.cpp
+END
+XmlExternalHeader.h
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/FT-389/!svn/ver/1/SRC/IQfact/IQfact/MyClass/XmlExternalHeader.h
+END
+MakeTestResultLog.h
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/FT-389/!svn/ver/1/SRC/IQfact/IQfact/MyClass/MakeTestResultLog.h
+END
+ParserCableLoss.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/FT-389/!svn/ver/1/SRC/IQfact/IQfact/MyClass/ParserCableLoss.cpp
+END
+WriteTestData.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/FT-389/!svn/ver/13/SRC/IQfact/IQfact/MyClass/WriteTestData.cpp
+END
+WiFiInitialize.h
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/FT-389/!svn/ver/1/SRC/IQfact/IQfact/MyClass/WiFiInitialize.h
+END
+OemTest.h
+K 25
+svn:wc:ra_dav:version-url
+V 54
+/FT-389/!svn/ver/1/SRC/IQfact/IQfact/MyClass/OemTest.h
+END
+複製 -OemTest.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 78
+/FT-389/!svn/ver/1/SRC/IQfact/IQfact/MyClass/%E8%A4%87%E8%A3%BD%20-OemTest.cpp
+END
+PreLoadImage.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/FT-389/!svn/ver/13/SRC/IQfact/IQfact/MyClass/PreLoadImage.cpp
+END
+ParserCableLoss.h
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/FT-389/!svn/ver/1/SRC/IQfact/IQfact/MyClass/ParserCableLoss.h
+END
+WriteTestData.h
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/FT-389/!svn/ver/13/SRC/IQfact/IQfact/MyClass/WriteTestData.h
+END
+SfcsExternalData.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 65
+/FT-389/!svn/ver/1/SRC/IQfact/IQfact/MyClass/SfcsExternalData.cpp
+END
+LoadDutRequired.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/FT-389/!svn/ver/1/SRC/IQfact/IQfact/MyClass/LoadDutRequired.cpp
+END
+複製 -OemTest.h
+K 25
+svn:wc:ra_dav:version-url
+V 76
+/FT-389/!svn/ver/1/SRC/IQfact/IQfact/MyClass/%E8%A4%87%E8%A3%BD%20-OemTest.h
+END

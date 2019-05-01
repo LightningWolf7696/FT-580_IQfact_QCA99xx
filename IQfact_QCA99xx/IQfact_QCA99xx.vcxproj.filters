@@ -1,0 +1,250 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="原始程式檔">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="標頭檔">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="資源檔">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Action">
+      <UniqueIdentifier>{2d8a3475-0f01-4aa4-9849-6730c6337a0b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Action\LoadDutRequired">
+      <UniqueIdentifier>{9001ff6e-d6ae-4415-9fad-d26f7224e812}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Action\ParserCableLoss">
+      <UniqueIdentifier>{7167f75b-5317-491f-9985-5e878695afe6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Action\PreLoadImage">
+      <UniqueIdentifier>{027e2ea8-ee46-457b-b35f-9c9eb752c0ce}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Action\VerifyTestData">
+      <UniqueIdentifier>{8ec58c91-5866-481a-b3db-74bb0e294fca}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Action\WiFiInitialize">
+      <UniqueIdentifier>{b909ef8f-58e8-4678-8348-1e78d4397ec8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Common">
+      <UniqueIdentifier>{2206d727-ac25-4e98-9ed6-ce539a18327a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Action\WriteTestData">
+      <UniqueIdentifier>{9f09e2a4-3662-4124-80dc-e186f3a8e3f1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Action\IQfact">
+      <UniqueIdentifier>{bd7a058a-5a29-4cfe-95aa-b11145da28b4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Action\ART2">
+      <UniqueIdentifier>{d9813483-029f-49d0-8ea0-9a1812bf6f72}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Action\BtGetTargetPower">
+      <UniqueIdentifier>{016f6d84-a322-4973-a5d7-182516e46c04}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Action\BtInitialize">
+      <UniqueIdentifier>{fc5b9552-d066-4050-978d-2e7bbb0ecba4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Action\BtStartFrameModulatedTx">
+      <UniqueIdentifier>{a7deac78-dcf2-4714-86da-ee65983a6850}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Action\BtStopFrameModulatedTx">
+      <UniqueIdentifier>{52c28d98-ce8c-421a-913a-f97b92d9dc8b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Action\BtVerifyTestData">
+      <UniqueIdentifier>{af8fa769-1f53-4019-8934-307b931fbce1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Action\BtWriteTestData">
+      <UniqueIdentifier>{9b5316f0-8715-4681-a2e5-4b06865d0d3e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Action\WiFiTerminate">
+      <UniqueIdentifier>{e072292a-bca0-4b2d-9f3c-e4d68f7573c5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Action\BtStartContModulatedTx">
+      <UniqueIdentifier>{f0ab918f-65e5-47cc-8d5e-5564bc7251e3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Action\BtStopContModulatedTx">
+      <UniqueIdentifier>{eea867d5-7fd5-44db-bae5-0bfd2ed5a4cc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Action\StartContModulatedTx">
+      <UniqueIdentifier>{8bc505d1-4d1a-4888-bbac-a8848f772a58}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Action\StopContModulatedTx">
+      <UniqueIdentifier>{118dd742-229a-4f12-9a32-8c7426bcbc60}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="ReadMe.txt" />
+    <None Include="IQfact_QCA99xx.def">
+      <Filter>原始程式檔</Filter>
+    </None>
+    <None Include="res\IQfact_QCA99xx.rc2">
+      <Filter>資源檔</Filter>
+    </None>
+    <None Include="ClassDiagram1.cd" />
+    <None Include="ClassDiagram2.cd" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="IQfact_QCA99xx.cpp">
+      <Filter>原始程式檔</Filter>
+    </ClCompile>
+    <ClCompile Include="stdafx.cpp">
+      <Filter>原始程式檔</Filter>
+    </ClCompile>
+    <ClCompile Include="MyClass\ParserCableLoss.cpp">
+      <Filter>Action\ParserCableLoss</Filter>
+    </ClCompile>
+    <ClCompile Include="MyClass\PreLoadImage.cpp">
+      <Filter>Action\PreLoadImage</Filter>
+    </ClCompile>
+    <ClCompile Include="MyClass\VerifyTestData.cpp">
+      <Filter>Action\VerifyTestData</Filter>
+    </ClCompile>
+    <ClCompile Include="MyClass\WiFiInitialize.cpp">
+      <Filter>Action\WiFiInitialize</Filter>
+    </ClCompile>
+    <ClCompile Include="MyClass\LoadDutRequired.cpp">
+      <Filter>Action\LoadDutRequired</Filter>
+    </ClCompile>
+    <ClCompile Include="CommFunc.cpp">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="MyClass\WriteTestData.cpp">
+      <Filter>Action\WriteTestData</Filter>
+    </ClCompile>
+    <ClCompile Include="MyClass\IQfact_Test.cpp">
+      <Filter>Action\IQfact</Filter>
+    </ClCompile>
+    <ClCompile Include="MyClass\ART2_Test.cpp">
+      <Filter>Action\ART2</Filter>
+    </ClCompile>
+    <ClCompile Include="MyClass\BtGetTargetPower.cpp">
+      <Filter>Action\BtGetTargetPower</Filter>
+    </ClCompile>
+    <ClCompile Include="MyClass\BtInitialize.cpp">
+      <Filter>Action\BtInitialize</Filter>
+    </ClCompile>
+    <ClCompile Include="MyClass\BtStartFrameModulatedTx.cpp">
+      <Filter>Action\BtStartFrameModulatedTx</Filter>
+    </ClCompile>
+    <ClCompile Include="MyClass\BtStopFrameModulatedTx.cpp">
+      <Filter>Action\BtStopFrameModulatedTx</Filter>
+    </ClCompile>
+    <ClCompile Include="MyClass\BtVerifyTestData.cpp">
+      <Filter>Action\BtVerifyTestData</Filter>
+    </ClCompile>
+    <ClCompile Include="MyClass\BtWriteTestData.cpp">
+      <Filter>Action\BtWriteTestData</Filter>
+    </ClCompile>
+    <ClCompile Include="MyClass\WiFiTerminate.cpp">
+      <Filter>Action\WiFiTerminate</Filter>
+    </ClCompile>
+    <ClCompile Include="MyClass\BtStartContModulatedTx.cpp">
+      <Filter>Action\BtStartContModulatedTx</Filter>
+    </ClCompile>
+    <ClCompile Include="MyClass\BtStopContModulatedTx.cpp">
+      <Filter>Action\BtStopContModulatedTx</Filter>
+    </ClCompile>
+    <ClCompile Include="MyClass\StopContModulatedTx.cpp">
+      <Filter>Action\StopContModulatedTx</Filter>
+    </ClCompile>
+    <ClCompile Include="MyClass\StartContModulatedTx.cpp">
+      <Filter>Action\StartContModulatedTx</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="IQfact_QCA99xx.h">
+      <Filter>標頭檔</Filter>
+    </ClInclude>
+    <ClInclude Include="stdafx.h">
+      <Filter>標頭檔</Filter>
+    </ClInclude>
+    <ClInclude Include="targetver.h">
+      <Filter>標頭檔</Filter>
+    </ClInclude>
+    <ClInclude Include="Resource.h">
+      <Filter>標頭檔</Filter>
+    </ClInclude>
+    <ClInclude Include="MyClass\ParserCableLoss.h">
+      <Filter>Action\ParserCableLoss</Filter>
+    </ClInclude>
+    <ClInclude Include="MyClass\PreLoadImage.h">
+      <Filter>Action\PreLoadImage</Filter>
+    </ClInclude>
+    <ClInclude Include="MyClass\VerifyTestData.h">
+      <Filter>Action\VerifyTestData</Filter>
+    </ClInclude>
+    <ClInclude Include="MyClass\WiFiInitialize.h">
+      <Filter>Action\WiFiInitialize</Filter>
+    </ClInclude>
+    <ClInclude Include="MyClass\LoadDutRequired.h">
+      <Filter>Action\LoadDutRequired</Filter>
+    </ClInclude>
+    <ClInclude Include="CommFunc.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="IQfact_QCA99xxDef.h">
+      <Filter>標頭檔</Filter>
+    </ClInclude>
+    <ClInclude Include="MyDef.h">
+      <Filter>標頭檔</Filter>
+    </ClInclude>
+    <ClInclude Include="MyClass\WriteTestData.h">
+      <Filter>Action\WriteTestData</Filter>
+    </ClInclude>
+    <ClInclude Include="MyClass\IQfact_Test.h">
+      <Filter>Action\IQfact</Filter>
+    </ClInclude>
+    <ClInclude Include="MyClass\ART2_Test.h">
+      <Filter>Action\ART2</Filter>
+    </ClInclude>
+    <ClInclude Include="MyClass\BtGetTargetPower.h">
+      <Filter>Action\BtGetTargetPower</Filter>
+    </ClInclude>
+    <ClInclude Include="MyClass\BtInitialize.h">
+      <Filter>Action\BtInitialize</Filter>
+    </ClInclude>
+    <ClInclude Include="MyClass\BtStartFrameModulatedTx.h">
+      <Filter>Action\BtStartFrameModulatedTx</Filter>
+    </ClInclude>
+    <ClInclude Include="MyClass\BtStopFrameModulatedTx.h">
+      <Filter>Action\BtStopFrameModulatedTx</Filter>
+    </ClInclude>
+    <ClInclude Include="MyClass\BtVerifyTestData.h">
+      <Filter>Action\BtVerifyTestData</Filter>
+    </ClInclude>
+    <ClInclude Include="MyClass\BtWriteTestData.h">
+      <Filter>Action\BtWriteTestData</Filter>
+    </ClInclude>
+    <ClInclude Include="MyClass\WiFiTerminate.h">
+      <Filter>Action\WiFiTerminate</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Common\MVTDef.h">
+      <Filter>標頭檔</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Common\UtilityDllDef.h">
+      <Filter>標頭檔</Filter>
+    </ClInclude>
+    <ClInclude Include="MyClass\BtStartContModulatedTx.h">
+      <Filter>Action\BtStartContModulatedTx</Filter>
+    </ClInclude>
+    <ClInclude Include="MyClass\BtStopContModulatedTx.h">
+      <Filter>Action\BtStopContModulatedTx</Filter>
+    </ClInclude>
+    <ClInclude Include="MyClass\StopContModulatedTx.h">
+      <Filter>Action\StopContModulatedTx</Filter>
+    </ClInclude>
+    <ClInclude Include="MyClass\StartContModulatedTx.h">
+      <Filter>Action\StartContModulatedTx</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="IQfact_QCA99xx.rc">
+      <Filter>資源檔</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+</Project>

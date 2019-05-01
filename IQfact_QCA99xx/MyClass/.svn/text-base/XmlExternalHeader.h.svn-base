@@ -1,0 +1,17 @@
+#pragma once
+
+#include "../CommFunc.h"
+
+
+class CXmlExternalHeader
+{
+public:
+	CXmlExternalHeader(void);
+public:
+	~CXmlExternalHeader(void);
+
+public:
+	BOOL START(LPSTR szXmlExtHeader, LPSTR lpszRunInfo);
+
+
+};

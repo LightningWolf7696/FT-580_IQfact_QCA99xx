@@ -1,0 +1,53 @@
+﻿Build started 2018/7/27 下午 04:53:00.
+     1>Project "D:\FT-580_IQfact_QCA99XX\IQfact_QCA99xx\IQfact_QCA99xx\IQfact_QCA99xx.vcxproj" on node 2 (build target(s)).
+     1>InitializeBuildStatus:
+         Creating "Release\IQfact_QCA99xx.unsuccessfulbuild" because "AlwaysCreate" was specified.
+       ClCompile:
+         All outputs are up-to-date.
+         C:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\bin\CL.exe /c /Zi /nologo /W3 /WX- /Od /Oi /Oy- /GL /D WIN32 /D _WINDOWS /D NDEBUG /D _USRDLL /D _WINDLL /D _MBCS /Gm- /EHsc /MT /Zp4 /GS /Gy /fp:precise /Zc:wchar_t /Zc:forScope /Fo"Release\\" /Fd"Release\vc100.pdb" /FR"Release\\" /Gd /TP /analyze- /errorReport:prompt MyClass\IQfact_Test.cpp
+         IQfact_Test.cpp
+       ResourceCompile:
+         All outputs are up-to-date.
+     1>C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\Microsoft.CppBuild.targets(990,5): warning MSB8012: TargetPath(D:\FT-580_IQfact_QCA99XX\IQfact_QCA99xx\Release\IQfact_QCA99xx.dll) does not match the Linker's OutputFile property value (D:\FT-580_IQfact_QCA99XX\bin\IQfact_QCA99xx.dll). This may cause your project to build incorrectly. To correct this, please make sure that $(OutDir), $(TargetName) and $(TargetExt) property values match the value specified in %(Link.OutputFile).
+       Link:
+         C:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\bin\link.exe /ERRORREPORT:PROMPT /OUT:"..\..\bin\IQfact_QCA99xx.dll" /INCREMENTAL:NO /NOLOGO setupapi.lib ../../lib/release/UtilityDll.lib /DEF:".\IQfact_QCA99xx.def" /MANIFEST /ManifestFile:"Release\IQfact_QCA99xx.dll.intermediate.manifest" /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /DEBUG /PDB:".\release\.pdb" /SUBSYSTEM:WINDOWS /OPT:REF /OPT:ICF /LTCG /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"..\..\lib\release\IQfact_QCA99xx.lib" /MACHINE:X86 /DLL Release\IQfact_QCA99xx.res
+         Release\CommFunc.obj
+         Release\IQfact_QCA99xx.obj
+         Release\ART2_Test.obj
+         Release\BtGetTargetPower.obj
+         Release\BtInitialize.obj
+         Release\BtStartContModulatedTx.obj
+         Release\BtStartFrameModulatedTx.obj
+         Release\BtStopContModulatedTx.obj
+         Release\BtStopFrameModulatedTx.obj
+         Release\BtVerifyTestData.obj
+         Release\BtWriteTestData.obj
+         Release\LoadDutRequired.obj
+         Release\IQfact_Test.obj
+         Release\ParserCableLoss.obj
+         Release\PreLoadImage.obj
+         Release\StartContModulatedTx.obj
+         Release\StopContModulatedTx.obj
+         Release\VerifyTestData.obj
+         Release\WiFiInitialize.obj
+         Release\WiFiTerminate.obj
+         Release\WriteTestData.obj
+         Release\stdafx.obj
+            Creating library ..\..\lib\release\IQfact_QCA99xx.lib and object ..\..\lib\release\IQfact_QCA99xx.exp
+         Generating code
+     1>d:\ft-580_iqfact_qca99xx\iqfact_qca99xx\iqfact_qca99xx\myclass\stopcontmodulatedtx.cpp(17): warning C4715: 'CStopContModulatedTx::Run' : not all control paths return a value
+     1>d:\ft-580_iqfact_qca99xx\iqfact_qca99xx\iqfact_qca99xx\myclass\startcontmodulatedtx.cpp(17): warning C4715: 'CStartContModulatedTx::Run' : not all control paths return a value
+         Finished generating code
+         IQfact_QCA99xx.vcxproj -> D:\FT-580_IQfact_QCA99XX\IQfact_QCA99xx\Release\IQfact_QCA99xx.dll
+       Manifest:
+         C:\Program Files (x86)\Microsoft SDKs\Windows\v7.0A\bin\mt.exe /nologo /verbose /outputresource:"..\..\bin\IQfact_QCA99xx.dll;#2" /manifest Release\IQfact_QCA99xx.dll.intermediate.manifest "C:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\Include\Manifest\dpiaware.manifest"
+       BscMake:
+         All outputs are up-to-date.
+       FinalizeBuildStatus:
+         Deleting file "Release\IQfact_QCA99xx.unsuccessfulbuild".
+         Touching "Release\IQfact_QCA99xx.lastbuildstate".
+     1>Done Building Project "D:\FT-580_IQfact_QCA99XX\IQfact_QCA99xx\IQfact_QCA99xx\IQfact_QCA99xx.vcxproj" (build target(s)).
+
+Build succeeded.
+
+Time Elapsed 00:00:09.07

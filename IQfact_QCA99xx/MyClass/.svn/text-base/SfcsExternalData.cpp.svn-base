@@ -1,0 +1,21 @@
+#include "../StdAfx.h"
+#include "SfcsExternalData.h"
+
+
+CSfcsExternalData::CSfcsExternalData(void)
+{
+}
+
+CSfcsExternalData::~CSfcsExternalData(void)
+{
+
+}
+
+BOOL CSfcsExternalData::START(LPSTR szSfcsExtData, LPSTR lpszRunInfo)
+{
+	AFX_MANAGE_STATE(AfxGetStaticModuleState());	
+
+//	sprintf_s(szSfcsExtData,DLL_INFO_SIZE,"*WiFiMAC_%s",g_GlobalInfo.szBarcode);
+	return TRUE;
+}
+

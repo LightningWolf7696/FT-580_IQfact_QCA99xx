@@ -1,0 +1,19 @@
+#pragma once
+
+#include "../CommFunc.h"
+
+
+class CWriteTestData
+{
+public:
+	CWriteTestData(void);
+public:
+	~CWriteTestData(void);
+
+public:
+	BOOL START(BOOL bRetry, LPSTR lpszRunInfo);
+	TM_RETURN QUANTENNA(funcGetMessage cbListMessage, funcGetMessage cbXmlMessage, funcGetMessage cbSfcsSpecMessage, funcGetMessage cbSfcsResultMessage, ERRORREPORT &ErrorReport);
+private:
+	double dblFileSize(const char* fname);
+
+};

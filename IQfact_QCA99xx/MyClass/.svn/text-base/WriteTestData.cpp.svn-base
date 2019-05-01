@@ -1,0 +1,257 @@
+#include "../StdAfx.h"
+#include "WriteTestData.h"
+
+CWriteTestData::CWriteTestData(void)
+{
+}
+
+CWriteTestData::~CWriteTestData(void)
+{
+
+}
+
+BOOL CWriteTestData::START(BOOL bRetry, LPSTR lpszRunInfo)
+{
+	AFX_MANAGE_STATE(AfxGetStaticModuleState());		
+	char szSetMacEUI[32]={0};
+	CString strMac;
+	char szPipeLineMsg[PIPE_MAX_LENGTH]={0};
+	char szLocalPath[MAX_PATH]={0};
+	char szMessage[DLL_INFO_SIZE]={0};
+	char szPipeCmd[MAX_PATH]={0};
+	char szSourcePath[MAX_PATH]={0};
+	BOOL bRtn;
+	double dbSize;
+	TCHAR szCmd[MAX_PATH]={0};
+	double stime;
+
+	if(g_GlobalInfo.Pipe_SSH_ID)
+	{
+		if(PipeLineClose(g_GlobalInfo.Pipe_SSH_ID,lpszRunInfo))
+			g_GlobalInfo.Pipe_SSH_ID = NULL;
+		else
+			return FALSE;
+	}
+
+	GetLocalDirectory(szLocalPath,szMessage);
+	if(stricmp(g_GlobalInfo.TEST_TYPE,_T("DOUBLE_LOGIN")) == NULL)
+		sprintf_s(szPipeCmd,MAX_PATH,"%sOEM\\Cambium\\plink.exe -ssh %s -l admin -pw %s",szLocalPath, g_GlobalInfo.DUT_IP_ADDRESS,_T("admin"));
+	else
+		sprintf_s(szPipeCmd,MAX_PATH,"%sOEM\\Cambium\\plink.exe -ssh %s -l root -pw %s",szLocalPath, g_GlobalInfo.DUT_IP_ADDRESS,g_GlobalInfo.SSH_PASSWORD);
+	char szBuffer[1000]={0};
+	while(1)
+	{
+		if(!PipeLineOpen(&g_GlobalInfo.Pipe_SSH_ID,szPipeCmd,lpszRunInfo))
+			return FALSE;
+
+		Sleep(500);
+		while(1)
+		{
+			PipeLineReadData(g_GlobalInfo.Pipe_SSH_ID,szBuffer,sizeof(szBuffer),szMessage); 
+			if(strlen(szBuffer)>0)
+				break;
+			else
+				Sleep(500);
+		}
+		if(strstr(szBuffer,"ERROR") == NULL)
+			break;
+		PipeLineClose(g_GlobalInfo.Pipe_SSH_ID,szMessage);
+		Sleep(500);
+
+		ExportTestLog("Program SSH Fail,[%s]\r\n",szPipeCmd);
+	}
+
+	if(stricmp(g_GlobalInfo.TEST_TYPE,_T("DOUBLE_LOGIN")) == NULL)
+	{
+		do 
+		{
+			
+				stime=GetTickCount();
+				do
+				{
+					PipeLineReadData(g_GlobalInfo.Pipe_SSH_ID,szPipeLineMsg,sizeof(szBuffer),szMessage); 
+					if(strlen(szBuffer)>0)
+						break;
+					else
+						Sleep(500);
+				}while(((GetTickCount() - stime)/1000) < 10);
+				strcat_s(szBuffer, strlen(szBuffer)+strlen(szPipeLineMsg)+1,szPipeLineMsg);
+				if(strstr(szBuffer,"y/n"))
+				{
+					if(!CCommFunc::PipeLineQueryData(g_GlobalInfo.Pipe_SSH_ID,"y", "Cambium", 3, szMessage))
+						goto ERRORED;
+					break;
+				}else if(strstr(szBuffer,"Cambium"))
+					break;
+				else{
+					sprintf_s(szMessage, DLL_INFO_SIZE, "ssh login failed.");
+					ExportTestLog(szBuffer);
+					goto ERRORED;
+				}
+		} while (TRUE);
+		if(!CCommFunc::PipeLineQueryData(g_GlobalInfo.Pipe_SSH_ID,"debug su", "Password", 3, szMessage))
+			goto ERRORED;
+		if(!CCommFunc::PipeLineQueryData(g_GlobalInfo.Pipe_SSH_ID, g_GlobalInfo.SSH_PASSWORD, "#", 3, szMessage))
+			goto ERRORED;
+		if(!CCommFunc::PipeLineQueryData(g_GlobalInfo.Pipe_SSH_ID,"n", "#", 3, szMessage))
+			goto ERRORED;
+		
+		if(!CCommFunc::PipeLineQueryData(g_GlobalInfo.Pipe_SSH_ID,"export PATH=$PATH:/sbin", "#", 3, szMessage))
+			goto ERRORED;
+		if(!CCommFunc::PipeLineQueryData(g_GlobalInfo.Pipe_SSH_ID,"export PATH=$PATH:/usr/sbin", "#", 3, szMessage))
+			goto ERRORED;
+		if(!CCommFunc::PipeLineQueryData(g_GlobalInfo.Pipe_SSH_ID,"export PATH=$PATH:/usr/settings", "#", 3, szMessage))
+			goto ERRORED;
+	}else{
+		if(!CCommFunc::PipeLineQueryData(g_GlobalInfo.Pipe_SSH_ID,"n", "#", 3, szMessage))
+			goto ERRORED;
+	}
+
+
+	if(!g_GlobalInfo.SKIP_LOAD_SCRIPT)
+	{
+		if(stricmp(g_GlobalInfo.TEST_TYPE,_T("DOUBLE_LOGIN")) == NULL)
+			strCopy(szCmd, "#");
+		else
+			strCopy(szCmd, "root@Cambium");
+
+		sprintf_s(szPipeCmd,sizeof(szPipeCmd),"loadscripts %s",g_GlobalInfo.HOST_IP_ADDRESS);
+		if(!CCommFunc::PipeLineQueryData(g_GlobalInfo.Pipe_SSH_ID, szPipeCmd, szCmd, 3, szMessage))
+			goto ERRORED;
+		
+		if(strstr(szMessage,"timeout") != NULL)
+		{
+			sprintf_s(szMessage,DLL_INFO_SIZE,"loadscripts timeout");
+			goto ERRORED;
+		}
+	}
+
+	strMac.Format("%s",g_GlobalInfo.szBarcode);
+	sprintf_s(szSetMacEUI,sizeof(szSetMacEUI),"%s %s:%s:%s",g_GlobalInfo.SET_MAC_CMD, strMac.Mid(6,2),strMac.Mid(8,2),strMac.Mid(10,2));
+	if(!CCommFunc::PipeLineQueryData(g_GlobalInfo.Pipe_SSH_ID, szSetMacEUI, "Press y for yes and n for no", 3, szMessage))
+		goto ERRORED;
+
+	if(!CCommFunc::PipeLineQueryData(g_GlobalInfo.Pipe_SSH_ID, "y", szCmd, 3, szMessage))
+		goto ERRORED;
+
+	if(strstr(szMessage,"Wrong entry") != NULL)
+	{
+		sprintf_s(lpszRunInfo,DLL_INFO_SIZE,"setmac apply fail.");
+		goto ERRORED;
+	}
+
+	//Backup eeprom
+	zeroIt(szSetMacEUI);
+	memcpy(szSetMacEUI,&g_GlobalInfo.szBarcode[6],6);	
+	sprintf_s(szPipeCmd,sizeof(szPipeCmd),"tftp -p -l /dev/mtdblock5 -r %s_mtdblock5 %s\r\n",szSetMacEUI,g_GlobalInfo.HOST_IP_ADDRESS);
+	if(!CCommFunc::PipeLineQueryData(g_GlobalInfo.Pipe_SSH_ID, szPipeCmd, szCmd, 3, szMessage))
+		goto ERRORED;
+	sprintf_s(szSourcePath,sizeof(szSourcePath),"%sOEM\\%s\\tftpServ\\%s_mtdblock5",g_GlobalInfo.szLocalPath,g_GlobalInfo.CUSTOMER,szSetMacEUI);
+	for(int j=0 ; j<10 ; j++)
+	{
+		Sleep(100);
+		if(bRtn = CheckFileExist(szSourcePath,szMessage))
+		{
+			dbSize = CCommFunc::GetlFileSize(szSourcePath);
+			if(dbSize == EEPROM_SIZE)
+			   break;
+		}
+	}
+	if(!bRtn)
+	{
+		sprintf_s(lpszRunInfo,DLL_INFO_SIZE,"Can't find calibration eeprom file,[%s]",szSourcePath);
+		PipeLineClose(g_GlobalInfo.Pipe_SSH_ID,szMessage);
+		return FALSE;
+	}
+	if(dbSize != EEPROM_SIZE)
+	{
+		sprintf_s(lpszRunInfo,DLL_INFO_SIZE,"Please call PE, backup eeprom file size error,[size:%.0lf]",dbSize);
+		PipeLineClose(g_GlobalInfo.Pipe_SSH_ID,szMessage);
+		AfxMessageBox(lpszRunInfo,MB_SETFOREGROUND);
+		return FALSE;
+	}
+
+	g_GlobalInfo.BackupE2pSuccess = TRUE;
+
+
+	if(PipeLineClose(g_GlobalInfo.Pipe_SSH_ID,lpszRunInfo))
+		g_GlobalInfo.Pipe_SSH_ID = NULL;
+
+	strcpy_s(lpszRunInfo,DLL_INFO_SIZE,"Programming data to DUT success.");
+
+	return TRUE;
+
+ERRORED:
+	if(PipeLineClose(g_GlobalInfo.Pipe_SSH_ID,lpszRunInfo))
+		g_GlobalInfo.Pipe_SSH_ID = NULL;
+	strcpy_s(lpszRunInfo,DLL_INFO_SIZE,szMessage);
+	return FALSE;
+
+}
+TM_RETURN CWriteTestData::QUANTENNA(funcGetMessage cbListMessage, funcGetMessage cbXmlMessage, funcGetMessage cbSfcsSpecMessage, funcGetMessage cbSfcsResultMessage, ERRORREPORT &ErrorReport)
+{
+	TCHAR szCmd[MAX_PATH]={0};
+	TCHAR szMessage[DLL_INFO_SIZE]={0};
+	CString strMac;
+	double dbTestTimeCost = GetTickCount();
+	TCHAR szBarCode[32]={0};
+	BOOL bRtn = TRUE;
+
+	MacAddrToCalc(g_GlobalInfo.szBarcode, szBarCode, 8, szMessage, DLL_INFO_SIZE);
+	strMac.Format("%s",&szBarCode);
+	strMac.MakeUpper();
+	sprintf_s(szCmd,sizeof(szCmd),"call_qcsapi set_mac_addr wifi0 %s:%s:%s:%s:%s:%s",strMac.Mid(0,2),strMac.Mid(2,2),strMac.Mid(4,2),strMac.Mid(6,2),strMac.Mid(8,2),strMac.Mid(10,2));
+	CCommFunc::ExportTestMessage(cbListMessage, szCmd);
+	ExportTestLog(szCmd);
+	
+	CCommFunc::SerialPortQueryData("\r","",3,szMessage);
+	SerialPortCleanData(szMessage);
+	for(int i=0; i<3; i++)
+	{
+		if(bRtn = CCommFunc::SerialPortQueryData(szCmd,"complete",3,szMessage))
+			break;
+		else
+			Sleep(500);
+	}
+	if(!bRtn)
+	{
+		sprintf_s(szMessage,"Program MAC failed, [Command : %s",szCmd);
+		goto FAILED;
+	}
+	for(int i=0; i<3; i++)
+		CCommFunc::SerialPortQueryData("sync","#",3,szMessage);
+
+	//Collect target power table to XML
+	CCommFunc::ExportTestMessage(cbXmlMessage, "<TestCase name=\"%s\">","WIFI_PROGRAM");
+	CCommFunc::ExportTestMessage(cbXmlMessage, "<Data>");
+		CCommFunc::ExportTestMessage(cbXmlMessage, "<MAC>%s</MAC>", szBarCode);
+	CCommFunc::ExportTestMessage(cbXmlMessage,"<TEST_TIME>%.3f</TEST_TIME>", (float)((GetTickCount() - dbTestTimeCost)/1000));
+	CCommFunc::ExportTestMessage(cbXmlMessage, "</Data>");
+	CCommFunc::ExportTestMessage(cbXmlMessage, "</TestCase>");
+
+	CCommFunc::ExportTestMessage(cbListMessage,"Commit data to eeprom successed.");
+	ExportTestLog("Commit data to eeprom successed.");
+	return TM_RETURN_PASS;
+
+FAILED:
+	CCommFunc::ExportTestMessage(cbListMessage,szMessage);
+	ExportTestLog(szMessage);
+	ErrorReport.DisableSfcsLink = FALSE;
+	strCopy(ErrorReport.ErrorCode,_T("T002"));
+	strCopy(ErrorReport.ErrorDetail,_T("NULL"));		
+	sprintf_s(ErrorReport.ErrorMsg,sizeof(ErrorReport.ErrorMsg),"%s",szMessage);
+	strCopy(ErrorReport.FailedTest,_T("WIFI_PROGRAM"));
+	ErrorReport.TestResult = FALSE;
+	return TM_RETURN_FAIL;
+ERRORED:
+	CCommFunc::ExportTestMessage(cbListMessage,szMessage);
+	ExportTestLog(szMessage);
+	ErrorReport.DisableSfcsLink = TRUE;
+	strCopy(ErrorReport.ErrorCode,_T("T089"));
+	strCopy(ErrorReport.ErrorDetail,_T("NULL"));		
+	sprintf_s(ErrorReport.ErrorMsg,sizeof(ErrorReport.ErrorMsg),"%s",szMessage);
+	strCopy(ErrorReport.FailedTest,_T("WIFI_PROGRAM"));
+	ErrorReport.TestResult = FALSE;
+	return TM_RETURN_ERROR;
+}
+

@@ -1,0 +1,17 @@
+#pragma once
+
+#include "../CommFunc.h"
+
+
+class CWiFiInitialize
+{
+public:
+	CWiFiInitialize(void);
+public:
+	~CWiFiInitialize(void);
+
+public:
+	BOOL START(BOOL bRetry, LPSTR lpszRunInfo);
+
+
+};

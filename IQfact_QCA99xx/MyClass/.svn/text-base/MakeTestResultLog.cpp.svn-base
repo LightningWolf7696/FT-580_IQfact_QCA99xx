@@ -1,0 +1,193 @@
+#include "../StdAfx.h"
+#include "MakeTestResultLog.h"
+
+CMakeTestResultLog::CMakeTestResultLog(void)
+{
+}
+
+CMakeTestResultLog::~CMakeTestResultLog(void)
+{
+
+}
+
+#define BACKUP_FILE_IN_WRITE_MAC_FUNC
+BOOL CMakeTestResultLog::START(LPSTR szType, LPSTR szMode, LPSTR szLocation, ERRORREPORT ActualErrorReport, LPSTR lpszRunInfo)
+{
+	AFX_MANAGE_STATE(AfxGetStaticModuleState());		
+	char szMAC_EUI[7]={0};	
+	char szPipeLineMsg[PIPE_MAX_LENGTH]={0};
+	char szLocalPath[MAX_PATH]={0};
+	char szMessage[DLL_INFO_SIZE]={0};
+	char szPipeCmd[MAX_PATH]={0};
+	TCHAR szSourcePath[MAX_PATH]={0};
+	TCHAR szDestPath[MAX_PATH]={0};
+	CString strTempPath;
+	BOOL bRtn;
+	int iPos = 0;
+	double dbSize;
+
+	if ( (strcmp(szType, _T("LOG")) != NULL) || (!g_GlobalInfo.BackupE2pSuccess))
+		return TRUE;
+		
+
+	GetLocalDirectory(szLocalPath,szMessage);
+
+
+#ifdef BACKUP_FILE_IN_WRITE_MAC_FUNC
+	memcpy(szMAC_EUI,&g_GlobalInfo.szBarcode[6],6);	
+
+	strTempPath.Format(_T("%s"), szLocation);
+	iPos = strTempPath.ReverseFind('\\');
+	strTempPath.Delete(iPos+1, strTempPath.GetLength()-iPos-1);
+	sprintf_s(szDestPath,sizeof(szDestPath),"%s%s_mtdblock5",strTempPath.GetBuffer(),szMAC_EUI);
+	sprintf_s(szSourcePath,sizeof(szSourcePath),"%sOEM\\%s\\tftpServ\\%s_mtdblock5",g_GlobalInfo.szLocalPath,g_GlobalInfo.CUSTOMER,szMAC_EUI);
+
+	if(CheckFileExist(szSourcePath,szMessage))
+	{
+		if(!CopyTestResultFile(szSourcePath, szDestPath,lpszRunInfo))
+			return FALSE;
+		strcpy_s(lpszRunInfo,DLL_INFO_SIZE,"Copy calibration eeprom file success.");
+	}else{
+		strcpy_s(lpszRunInfo,DLL_INFO_SIZE,"Skip copy calibration eeprom file.");
+	}
+	dbSize = CCommFunc::GetlFileSize(szDestPath);
+	if(dbSize == EEPROM_SIZE)
+		return TRUE;
+	else{
+		sprintf_s(lpszRunInfo,DLL_INFO_SIZE,"Please call PE, backup eeprom file size error,[size:%.0lf]",dbSize);
+		AfxMessageBox(lpszRunInfo,MB_SETFOREGROUND);
+		return FALSE;
+	}
+	
+
+#else	
+	if(g_GlobalInfo.Pipe_SSH_ID)
+	{
+		if(PipeLineClose(g_GlobalInfo.Pipe_SSH_ID,lpszRunInfo))
+			g_GlobalInfo.Pipe_SSH_ID = NULL;
+		else
+			return FALSE;
+	}
+
+	sprintf_s(szPipeCmd,MAX_PATH,"%sOEM\\Cambium\\plink.exe -ssh %s -l root -pw %s",szLocalPath, g_GlobalInfo.DUT_IP_ADDRESS,g_GlobalInfo.SSH_PASSWORD);
+	
+	char szBuffer[1000]={0};
+	for(int j=0 ; j<3 ; j++)
+	{
+		if(!PipeLineOpen(&g_GlobalInfo.Pipe_SSH_ID,szPipeCmd,lpszRunInfo))
+			return FALSE;
+
+		for(int i=0 ; i<10 ; i++)
+		{
+			PipeLineReadData(g_GlobalInfo.Pipe_SSH_ID,szBuffer,sizeof(szBuffer),szMessage); 
+			if(strlen(szBuffer)>0)
+				break;
+			else
+				Sleep(500);
+		}
+		if(strstr(szBuffer,"ERROR") == NULL)
+			break;
+		PipeLineClose(g_GlobalInfo.Pipe_SSH_ID,szMessage);
+		Sleep(500);
+
+		ExportTestLog("Program SSH Fail,[%s]\r\n",szPipeCmd);
+	}
+
+	if(strlen(szBuffer)<=0)
+	{
+		sprintf_s(lpszRunInfo,DLL_INFO_SIZE,"Pipe is return null string.");
+		return FALSE;
+	}
+
+	Sleep(1000);
+	if(!PipeLineWriteData(g_GlobalInfo.Pipe_SSH_ID,"n\r\n",lpszRunInfo))
+	{
+		PipeLineClose(g_GlobalInfo.Pipe_SSH_ID,szMessage);
+		return FALSE;	
+	}
+
+	if(!CCommFunc::PipeLineGetKeyWord(g_GlobalInfo.Pipe_SSH_ID,"root@Cambium",3,lpszRunInfo,szPipeLineMsg))
+	{
+		PipeLineClose(g_GlobalInfo.Pipe_SSH_ID,szMessage);
+		return FALSE;
+	}
+	
+	memcpy(szMAC_EUI,&g_GlobalInfo.szBarcode[6],6);	
+
+	strTempPath.Format(_T("%s"), szLocation);
+	iPos = strTempPath.ReverseFind('\\');
+	strTempPath.Delete(iPos+1, strTempPath.GetLength()-iPos-1);
+	sprintf_s(szDestPath,sizeof(szDestPath),"%s%s_mtdblock5",strTempPath.GetBuffer(),szMAC_EUI);
+	sprintf_s(szSourcePath,sizeof(szSourcePath),"%sOEM\\%s\\tftpServ\\%s_mtdblock5",g_GlobalInfo.szLocalPath,g_GlobalInfo.CUSTOMER,szMAC_EUI);
+	sprintf_s(szPipeCmd,sizeof(szPipeCmd),"tftp -p -l /dev/mtdblock5 -r %s_mtdblock5 %s\r\n",szMAC_EUI,g_GlobalInfo.HOST_IP_ADDRESS);
+
+	for(int i=0 ; i<3 ; i++)
+	{
+		if(!PipeLineWriteData(g_GlobalInfo.Pipe_SSH_ID,szPipeCmd,lpszRunInfo))
+		{
+			PipeLineClose(g_GlobalInfo.Pipe_SSH_ID,szMessage);
+			return FALSE;	
+		}
+		for(int j=0 ; j<10 ; j++)
+		{
+			Sleep(100);
+			if(bRtn = CheckFileExist(szSourcePath,szMessage))
+				break;
+		}
+		if(bRtn) break;
+	}
+	if(!bRtn)
+	{
+		sprintf_s(lpszRunInfo,DLL_INFO_SIZE,"Can't find calibration eeprom file,[%s]",szSourcePath);
+		PipeLineClose(g_GlobalInfo.Pipe_SSH_ID,szMessage);
+		return FALSE;
+	}
+
+	if(!CopyTestResultFile(szSourcePath, szDestPath,lpszRunInfo))
+	{
+		PipeLineClose(g_GlobalInfo.Pipe_SSH_ID,szMessage);
+		return FALSE;
+	}
+
+	if(PipeLineClose(g_GlobalInfo.Pipe_SSH_ID,lpszRunInfo))
+		g_GlobalInfo.Pipe_SSH_ID = NULL;
+
+	DeleteFile(szSourcePath);
+
+	strcpy_s(lpszRunInfo,DLL_INFO_SIZE,"Copy calibration eeprom file success.");
+	return TRUE;
+#endif
+}
+
+BOOL CMakeTestResultLog::CopyTestResultFile(LPSTR szSrcPath,LPSTR szDestPath,LPSTR szMessage)
+{
+	char szDllRtnMsg[DLL_INFO_SIZE]={0};
+	BOOL bOutputSuccess = FALSE;
+	int nFailCnt;
+
+	// Copy source file to destination file
+	CString strSourcePath, strDestinationPath;
+	strSourcePath.Format(_T("%s"), szSrcPath);
+	strDestinationPath.Format(_T("%s"),szDestPath);
+	do 
+	{
+		nFailCnt = 0;
+		bOutputSuccess = FALSE;
+
+		while(!(bOutputSuccess=CopyFile(strSourcePath, strDestinationPath, FALSE)))
+		{
+			ExportTestLog(_T("Output fail retry Cnt: %d, File: %s"), ++nFailCnt, strDestinationPath.GetBuffer());
+			if(nFailCnt >= OUTPUT_FAIL_RETRY)
+				break;
+			Sleep(1000);
+		}				
+		if(bOutputSuccess)	break;
+	} while (::MessageBox(NULL, _T(strDestinationPath.GetBuffer()), _T("Copy file fail, do you want to try again ?\0"), MB_YESNO|MB_ICONERROR|MB_SETFOREGROUND) == IDYES);
+	if(!bOutputSuccess)
+	{
+		sprintf_s(szMessage,DLL_INFO_SIZE,"Fail to copy file: %s to %s\0", strSourcePath, strDestinationPath);
+		return FALSE;
+	}
+
+	return TRUE;
+}

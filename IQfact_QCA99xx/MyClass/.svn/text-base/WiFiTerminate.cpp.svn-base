@@ -1,0 +1,29 @@
+#include "../StdAfx.h"
+#include "WiFiTerminate.h"
+
+CWiFiTerminate::CWiFiTerminate(void)
+{
+}
+
+CWiFiTerminate::~CWiFiTerminate(void)
+{
+
+}
+
+BOOL CWiFiTerminate::START(BOOL bRetry, LPSTR lpszRunInfo)
+{
+	AFX_MANAGE_STATE(AfxGetStaticModuleState());	
+
+	if(g_GlobalInfo.Pipe_SSH_ID)
+	{
+		if(PipeLineClose(g_GlobalInfo.Pipe_SSH_ID,lpszRunInfo))
+			g_GlobalInfo.Pipe_SSH_ID = NULL;
+		else
+			return FALSE;
+	}
+
+
+
+	return TRUE;
+}
+

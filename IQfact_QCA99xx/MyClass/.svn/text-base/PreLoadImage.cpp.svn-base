@@ -1,0 +1,436 @@
+#include "../StdAfx.h"
+#include "PreLoadImage.h"
+
+#define _USE_CONSOLE_TO_TEST
+BOOL CPreLoadImage::BreakThread;
+
+CPreLoadImage::CPreLoadImage(void)
+{
+}
+
+CPreLoadImage::~CPreLoadImage(void)
+{
+
+}
+
+TM_RETURN CPreLoadImage::START(funcGetMessage cbListMessage, funcGetMessage cbXmlMessage, funcGetMessage cbSfcsSpecMessage, funcGetMessage cbSfcsResultMessage, ERRORREPORT &ErrorReport)
+{
+	AFX_MANAGE_STATE(AfxGetStaticModuleState());	
+	char szMessage[DLL_INFO_SIZE]={0};
+	char szAppFilePath[MAX_PATH]={0};
+	char szAppLogFile[MAX_PATH]={0};
+	HWND hWnd=NULL;
+	char szRunMode[16]={0};
+	char szSetMacEUI[32]={0};
+	CString strMac;
+	BOOL bRtn;
+	char szTemp[200]={0};
+	DWORD dwBytesRead;
+	int nAutoCheckLed, nLedComPort, nLedTimeOutMsec;
+	TCHAR szCheckLedTurnOffStr[200];
+
+#ifdef _USE_CONSOLE_TO_TEST
+	char szComCmd[MAX_PATH]={0};
+	//Check boot key from console
+	if(!CCommFunc::SerialPortGetKeyWord(g_GlobalInfo.INIT_KEYWORD,g_GlobalInfo.INIT_TIME_OUT_SEC,szMessage))
+		goto T001;
+
+	Sleep(1000);
+
+	if(strcmp(g_GlobalInfo.CONSOLE_PASSWORD,_T("")) != NULL)
+	{//Input console user name & password
+		if(stricmp(g_GlobalInfo.TEST_TYPE,_T("DOUBLE_LOGIN")) == NULL)
+		{
+			if(!CCommFunc::SerialPortQueryData(_T(""),_T("login"),3,szMessage)) goto T089;
+			if(!CCommFunc::SerialPortQueryData(_T("admin"),_T("Password"),3,szMessage)) goto T089;
+			if(!CCommFunc::SerialPortQueryData(_T("admin"),_T("Cambium-Device"),3,szMessage)) goto T089;
+			if(!CCommFunc::SerialPortQueryData(_T("debug su"),_T("Password"),3,szMessage)) goto T089;
+			if(!CCommFunc::SerialPortQueryData(g_GlobalInfo.CONSOLE_PASSWORD,_T("#"),3,szMessage)) goto T089;
+			if(!CCommFunc::SerialPortQueryData(_T("export PATH=$PATH:/sbin"),_T("#"),3,szMessage)) goto T089;
+			if(!CCommFunc::SerialPortQueryData(_T("export PATH=$PATH:/usr/sbin"),_T("#"),3,szMessage)) goto T089;
+			if(!CCommFunc::SerialPortQueryData(_T("export PATH=$PATH:/usr/settings"),_T("#"),3,szMessage)) goto T089;
+			
+		}else{
+			if(!CCommFunc::SerialPortQueryData(_T(""),_T("login"),3,szMessage)) goto T089;
+			if(!CCommFunc::SerialPortQueryData(_T("root"),_T("Password"),3,szMessage)) goto T089;
+			if(!CCommFunc::SerialPortQueryData(g_GlobalInfo.CONSOLE_PASSWORD,_T("#"),3,szMessage)) goto T089;
+		}
+	}else{
+		if(!SerialPortWriteData("\n",szMessage))
+			goto T089;
+	}
+
+	//Change to 2G F/W
+	if(g_GlobalInfo.CHANGE_TO_2G_FW)
+	{
+		sprintf_s(szTemp,sizeof(szTemp),"tftp -g -r set2Ghzflag %s",g_GlobalInfo.HOST_IP_ADDRESS);
+		if(!CCommFunc::SerialPortQueryData(szTemp,_T("#"),3,szMessage)) goto T089;
+		if(!CCommFunc::SerialPortQueryData(_T("chmod 777 set2Ghzflag"),_T("#"),3,szMessage)) goto T089;
+		if(!CCommFunc::SerialPortQueryData(_T("./set2Ghzflag"),_T("#"),3,szMessage)) goto T089;
+	}		
+
+	//Get S/W version
+	for(int i=0 ; i<3 ; i++)
+	{	
+		Sleep(1000);
+		SerialPortCleanData(szMessage);
+		//Get version info
+		if(!SerialPortWriteData("cat /etc/version\n",szMessage))
+			goto T089;	
+		Sleep(1000);
+		zeroIt(szTemp);
+		if(!SerialPortReadData(szTemp, sizeof(szTemp), dwBytesRead, szMessage))
+			goto T089;
+		if(!(bRtn = CCommFunc::ExtractString(szTemp,g_GlobalInfo.szImageVersion,sizeof(g_GlobalInfo.szImageVersion),_T("Version"),_T("\n"))))
+		{
+			ExportTestLog("Get SW version fail, retry again.[%s]",szTemp);
+			continue;
+		}
+		ExportTestLog("Device SW image version : %s",g_GlobalInfo.szImageVersion);
+		if(strlen(g_GlobalInfo.szImageVersion))
+			break;
+		Sleep(1000);
+	}
+	if(!bRtn)
+	{
+		sprintf_s(szMessage,sizeof(szMessage),"Get Device SW image version failed.");
+		goto T089;
+	}
+	Sleep(1000);
+
+	//Check LED
+	if(!ReadAutoLedParam(nAutoCheckLed, nLedComPort, nLedTimeOutMsec,szMessage))
+		goto T089;
+	if(g_GlobalInfo.CHECK_LED)
+	{
+		//Open LED turn on thread
+		DWORD dwThreadID;
+		BOOL ConsoleFailed = FALSE;
+		static BOOL bLedInitial = FALSE;
+
+		HANDLE hThread = CreateThread( NULL, 0, (LPTHREAD_START_ROUTINE)ThreadForLedTurnOn,(LPVOID)&ConsoleFailed, 0, &dwThreadID) ;
+		if(nAutoCheckLed)
+		{
+			if(!bLedInitial)
+			{
+				if(!OpenLedCom(nLedComPort, szMessage))
+				{
+					BreakThread = TRUE;
+					goto T089;
+				}
+				Sleep(1000);
+				bLedInitial = TRUE;
+			}
+			
+			if(!CheckLedsTurnOn(g_GlobalInfo.LED_NUM_STRING, nLedTimeOutMsec, szMessage))
+				goto T103;
+			
+		}else{//Manual check led turn on
+			if(::MessageBox(NULL, _T("LED is turn on"), _T("LED Check"), MB_YESNO|MB_ICONQUESTION|MB_SETFOREGROUND) == IDNO)
+			{
+				BreakThread = TRUE;
+				sprintf_s(szMessage,sizeof(szMessage),"LED turn on failed");
+				goto T103;
+			}
+		}
+
+		BreakThread = TRUE;
+		if(hThread)
+		{
+			WaitForSingleObject(hThread,INFINITE);
+			CloseHandle(hThread);
+		}
+		if(ConsoleFailed)
+		{
+			printf_s(szMessage,sizeof(szMessage),"Set LED turn on command to serial failed");
+			goto T089;
+		}
+
+
+		CCommFunc::ExportTestMessage(cbListMessage, _T("LED is turn on"));
+		ExportTestLog(_T("LED is turn on"));
+		//Turn Off
+		if(!SerialPortWriteData("toggle_led off\n",szMessage))
+			goto T089;	
+		if(nAutoCheckLed)
+		{
+			if(!g_GlobalInfo.SKIP_LED_TURN_OFF)
+			{
+				if(!CheckLedsTurnOff(g_GlobalInfo.LED_NUM_STRING, nLedTimeOutMsec, szMessage))
+					goto T103;
+			}
+		}else{//Manual check led turn off
+			if(::MessageBox(NULL, _T("LED is turn off"), _T("LED Check"), MB_YESNO|MB_ICONQUESTION|MB_SETFOREGROUND) == IDNO)
+			{
+				sprintf_s(szMessage,sizeof(szMessage),"LED turn off failed");
+				goto T103;
+			}
+		}
+		CCommFunc::ExportTestMessage(cbListMessage, _T("LED is turn off"));
+		ExportTestLog(_T("LED is turn off"));
+	}
+
+	Sleep(g_GlobalInfo.SLEEP_TO_LOAD_NART_SEC*1000);
+	//Load nart to tftp server
+	sprintf_s(szComCmd,MAX_PATH,"loadnart %s",g_GlobalInfo.HOST_IP_ADDRESS);
+	for(int i=0 ; i<3 ; i++)
+	{		
+		if(bRtn = CCommFunc::SerialPortQueryData(szComCmd,_T("5108 INFO Waiting for connection from control process"),10,szMessage))			
+			break;
+	}
+	if(!bRtn)
+		goto T001;
+
+#else//Use SSH
+	char szPipeCmd[PIPE_MAX_LENGTH]={0};
+	char szPipeMsg[PIPE_MAX_LENGTH]={0};
+	char szLocalPath[MAX_PATH]={0};
+	char szBuffer[1000]={0};
+
+	GetLocalDirectory(szLocalPath,szMessage);
+	sprintf_s(szPipeCmd,MAX_PATH,"%splink.exe -ssh %s -l root -pw cambium",szLocalPath, g_GlobalInfo.DUT_IP_ADDRESS);
+	while(1)
+	{
+		if(!PipeLineOpen(&g_GlobalInfo.Pipe_SSH_ID,szPipeCmd,szMessage))
+			goto onError;
+
+		Sleep(500);
+		while(1)
+		{
+			PipeLineReadData(g_GlobalInfo.Pipe_SSH_ID,szBuffer,sizeof(szBuffer),szMessage); 
+			if(strlen(szBuffer)>0)
+				break;
+			else
+				Sleep(500);
+		}
+		if(strstr(szBuffer,"ERROR") == NULL)
+			break;
+		PipeLineClose(g_GlobalInfo.Pipe_SSH_ID,szMessage);
+		Sleep(500);
+
+		CCommFunc::ExportTestMessage(cbListMessage, "SSH Fail,[%s]",szPipeCmd);
+		ExportTestLog("SSH Fail,[%s]",szPipeCmd);
+
+	}
+
+	//if(!PipeLineOpen(&g_GlobalInfo.Pipe_SSH_ID,szPipeCmd,szMessage))
+	//	goto onError;
+
+	//Sleep(3000);
+
+	if(!PipeLineWriteData(g_GlobalInfo.Pipe_SSH_ID, "n\r\n", szMessage))
+		goto onError;
+
+	//Load nart to tftp server	
+	sprintf_s(szPipeCmd,MAX_PATH,"loadnart %s\r\n",g_GlobalInfo.HOST_IP_ADDRESS);
+	if(!PipeLineWriteData(g_GlobalInfo.Pipe_SSH_ID, szPipeCmd, szMessage))
+		goto onError;
+
+	//Check tftp download finished.
+	if(!CCommFunc::PipeLineGetKeyWord(g_GlobalInfo.Pipe_SSH_ID, "5108 INFO Waiting for connection from control process",30,szMessage,szPipeMsg))
+		goto onError;
+#endif
+	strcpy_s(szMessage,DLL_INFO_SIZE,"DUT was successfully to PreLoadImage.");
+	ErrorReport.DisableSfcsLink = FALSE;
+	strCopy(ErrorReport.ErrorCode,_T("No Error"));
+	strCopy(ErrorReport.ErrorDetail,_T("No Error"));
+	strCopy(ErrorReport.ErrorMsg,_T("No Error"));
+	strCopy(ErrorReport.FailedTest,_T("No Error"));
+	ErrorReport.TestResult = TRUE;
+	return TM_RETURN_PASS;	
+
+T089:
+	ErrorReport.DisableSfcsLink = TRUE;
+	strCopy(ErrorReport.ErrorCode,_T("T089"));
+	strCopy(ErrorReport.ErrorDetail,_T("NULL"));
+	sprintf_s(ErrorReport.ErrorMsg,sizeof(ErrorReport.ErrorMsg),"%s",szMessage);
+	strCopy(ErrorReport.FailedTest,_T("WIFI_PRELOAD_IMAGE"));
+	ErrorReport.TestResult = FALSE;
+	ExportTestLog(szMessage);
+	return TM_RETURN_ERROR;	
+
+T001:
+	ErrorReport.DisableSfcsLink = FALSE;
+	strCopy(ErrorReport.ErrorCode,_T("T001"));
+	strCopy(ErrorReport.ErrorDetail,_T("NULL"));
+	sprintf_s(ErrorReport.ErrorMsg,sizeof(ErrorReport.ErrorMsg),"%s",szMessage);
+	strCopy(ErrorReport.FailedTest,_T("WIFI_PRELOAD_IMAGE"));
+	ErrorReport.TestResult = FALSE;
+	ExportTestLog(szMessage);
+	return TM_RETURN_ERROR;	
+T103:
+	ErrorReport.DisableSfcsLink = FALSE;
+	strCopy(ErrorReport.ErrorCode,_T("T103"));
+	strCopy(ErrorReport.ErrorDetail,_T("NULL"));
+	sprintf_s(ErrorReport.ErrorMsg,sizeof(ErrorReport.ErrorMsg),"%s",szMessage);
+	strCopy(ErrorReport.FailedTest,_T("WIFI_PRELOAD_IMAGE"));
+	ErrorReport.TestResult = FALSE;
+	ExportTestLog(szMessage);
+	return TM_RETURN_ERROR;	
+}
+TM_RETURN CPreLoadImage::QUANTENNA(funcGetMessage cbListMessage, funcGetMessage cbXmlMessage, funcGetMessage cbSfcsSpecMessage, funcGetMessage cbSfcsResultMessage, ERRORREPORT &ErrorReport)
+{
+	AFX_MANAGE_STATE(AfxGetStaticModuleState());	
+	char szMessage[DLL_INFO_SIZE]={0};
+	char szAppFilePath[MAX_PATH]={0};
+	char szAppLogFile[MAX_PATH]={0};
+	HWND hWnd=NULL;
+	char szRunMode[16]={0};
+	char szSetMacEUI[32]={0};
+	CString strMac;
+	BOOL bRtn;
+	char szTemp[200]={0};
+	DWORD dwBytesRead;
+	int nAutoCheckLed, nLedComPort, nLedTimeOutMsec;
+	TCHAR szCheckLedTurnOffStr[200];
+	TCHAR szData[DLL_INFO_SIZE]={0};
+	CString strData;
+
+	char szComCmd[MAX_PATH]={0};
+	//Check boot key from console
+	if(!CCommFunc::SerialPortGetKeyWord(g_GlobalInfo.INIT_KEYWORD,g_GlobalInfo.INIT_TIME_OUT_SEC,szMessage))
+	{
+		sprintf_s(szMessage,sizeof(szMessage), "Initial  DUT failed,[Keyword : %s\tTimeout:%d", g_GlobalInfo.INIT_KEYWORD, g_GlobalInfo.INIT_TIME_OUT_SEC);
+		goto T001;
+	}
+
+	Sleep(1000);
+	if(!CCommFunc::SerialPortQueryData(_T(""),_T("#"),3,szMessage)) goto T089;
+	if(!CCommFunc::SerialPortQueryData(_T("ls /proc/bootcfg"), _T("#"),3,szData))
+	{
+		strCopy(szMessage,"set ls failed.");
+		goto T089;
+	}
+
+	strData.Format("%s",szData);
+	if( (strData.Find("dc_iq.cal") > 0) || (strData.Find("rx_iq.cal") > 0) || (strData.Find("pdetector.cal") > 0))
+	{
+		//if(!CCommFunc::SerialPortQueryData("delete_pd_power_cal", "#",3,szMessage)) goto T089;
+		//if(!CCommFunc::SerialPortQueryData("delete_dciq_cal_bootcfg", "#",3,szMessage)) goto T089;
+		//if(!CCommFunc::SerialPortQueryData("delete_rxiq_cal", "#",3,szMessage)) goto T089;
+//		if(!CCommFunc::SerialPortQueryData("set_bootval calstate 1", "#",3,szMessage)) goto T089;
+//		if(!CCommFunc::SerialPortQueryData("sync;sync;sync", "#",3,szMessage)) goto T089;
+//		AfxMessageBox("Please reboot UUT");
+		strCopy(szMessage, "Please delete calibration data & reboot UUT");
+		goto T089;
+	}
+
+
+	strcpy_s(szMessage,DLL_INFO_SIZE,"DUT was successfully to PreLoadImage.");
+	ErrorReport.DisableSfcsLink = FALSE;
+	strCopy(ErrorReport.ErrorCode,_T("No Error"));
+	strCopy(ErrorReport.ErrorDetail,_T("No Error"));
+	strCopy(ErrorReport.ErrorMsg,_T("No Error"));
+	strCopy(ErrorReport.FailedTest,_T("No Error"));
+	ErrorReport.TestResult = TRUE;
+	return TM_RETURN_PASS;	
+
+T089:
+	ErrorReport.DisableSfcsLink = TRUE;
+	strCopy(ErrorReport.ErrorCode,_T("T089"));
+	strCopy(ErrorReport.ErrorDetail,_T("NULL"));
+	sprintf_s(ErrorReport.ErrorMsg,sizeof(ErrorReport.ErrorMsg),"%s",szMessage);
+	strCopy(ErrorReport.FailedTest,_T("WIFI_PRELOAD_IMAGE"));
+	ErrorReport.TestResult = FALSE;
+	ExportTestLog(szMessage);
+	return TM_RETURN_ERROR;	
+
+T001:
+	ErrorReport.DisableSfcsLink = FALSE;
+	strCopy(ErrorReport.ErrorCode,_T("T001"));
+	strCopy(ErrorReport.ErrorDetail,_T("NULL"));
+	sprintf_s(ErrorReport.ErrorMsg,sizeof(ErrorReport.ErrorMsg),"%s",szMessage);
+	strCopy(ErrorReport.FailedTest,_T("WIFI_PRELOAD_IMAGE"));
+	ErrorReport.TestResult = FALSE;
+	ExportTestLog(szMessage);
+	return TM_RETURN_ERROR;	
+T103:
+	ErrorReport.DisableSfcsLink = FALSE;
+	strCopy(ErrorReport.ErrorCode,_T("T103"));
+	strCopy(ErrorReport.ErrorDetail,_T("NULL"));
+	sprintf_s(ErrorReport.ErrorMsg,sizeof(ErrorReport.ErrorMsg),"%s",szMessage);
+	strCopy(ErrorReport.FailedTest,_T("WIFI_PRELOAD_IMAGE"));
+	ErrorReport.TestResult = FALSE;
+	ExportTestLog(szMessage);
+	return TM_RETURN_ERROR;	
+}
+
+DWORD CPreLoadImage::ThreadForLedTurnOn(LPVOID lpParam)
+{
+	BreakThread = FALSE;
+	BOOL* ConsoleFailed=(BOOL*) lpParam;
+	TCHAR szMessage[DLL_INFO_SIZE]={0};
+	do 
+	{
+		Sleep(1);
+		//Turn On
+		if(!CCommFunc::SerialPortQueryData("toggle_led on\n",_T("#"),3,szMessage))
+		{
+			*ConsoleFailed = TRUE;
+			return TRUE;
+		}
+	} while (!BreakThread);	
+	return TRUE;
+}
+
+BOOL CPreLoadImage::ReadAutoLedParam(int &nAutoCheckLed, int &nLedComPort, int &nLedTimeOutMsec, LPSTR lpszRunInfo)
+{
+	CString strConfigStationPath,strEnvConfigPath;
+	TCHAR szResult[MAX_PATH]={0};
+
+	//Parser ConfigStation.ini
+	strConfigStationPath.Format(_T("%sENV\\%s"), g_GlobalInfo.szLocalPath , _T("ConfigStation.ini"));
+	GetPrivateProfileStringNoComment(_T("GLOBAL_FILE_PATH"), _T("ENV_CONFIG_PATH"), _T("#;"), _T("D:\TestProgramEnvSet\\EnvConfig.ini"), szResult, sizeof(szResult), strConfigStationPath);
+	//Parser EnvConfig.ini
+	strEnvConfigPath.Format(_T("%s"), szResult);
+	GetPrivateProfileStringNoComment(_T("PROGRAM_ENVIRONMENT_SET"), _T("ENV_AUTO_CHECK_LED"), _T("#;"), _T("0"), szResult, sizeof(szResult), strEnvConfigPath);
+	nAutoCheckLed = atoi(szResult);
+	if(nAutoCheckLed)
+	{
+		GetPrivateProfileStringNoComment(_T("PROGRAM_ENVIRONMENT_SET"), _T("ENV_CHECKLED_TIMEOUT"), _T("#;"), _T("4000"), szResult, sizeof(szResult), strEnvConfigPath);
+		nLedTimeOutMsec = atoi(szResult);
+		GetPrivateProfileStringNoComment(_T("PROGRAM_ENVIRONMENT_SET"), _T("ENV_CHECKLED_COMPORT"), _T("#;"), _T("0"), szResult, sizeof(szResult), strEnvConfigPath);
+		nLedComPort = atoi(szResult);
+		if(nLedComPort == 0)
+		{
+			sprintf_s(lpszRunInfo,DLL_INFO_SIZE,"Can't find ENV_AUTO_CHECK_LED name from [Name:%s,\tSection:%s]",strEnvConfigPath.GetBuffer(),_T("PROGRAM_ENVIRONMENT_SET"));
+			return FALSE;
+		}
+	}
+	return TRUE;
+}
+
+BOOL CPreLoadImage::GetPrivateProfileStringNoComment(LPCTSTR lpAppName, LPCTSTR lpKeyName, LPCTSTR lpComment, LPCTSTR lpDefault, LPSTR lpszValue, int nValueSize, LPCTSTR lpFileName)
+{
+	BOOL bRtn = TRUE;
+	CString strComment(lpComment);
+	CString strValue;
+	TCHAR *pszValue = new TCHAR[nValueSize];
+	memset(pszValue, 0, nValueSize);
+
+	GetPrivateProfileString(lpAppName, lpKeyName, lpDefault, pszValue, nValueSize, lpFileName);
+	strValue.Format(_T("%s"), pszValue);
+
+	if(strValue.IsEmpty())
+		memcpy(lpszValue, lpDefault, nValueSize);
+
+	int nSearch = -1;
+	int nFind = 99;
+	for(int i=0 ; i<strComment.GetLength() ; i++)
+	{
+		nSearch = strValue.Find(strComment.Mid(i, 1));
+		if(nSearch != -1 && nSearch<nFind)
+			nFind = nSearch;
+	}
+
+	if(nFind != -1)
+		strValue = strValue.Left(nFind);
+
+	strValue.TrimRight();
+	strcpy_s(lpszValue, strValue.GetLength()+1, strValue.GetBuffer());
+
+	delete[] pszValue;
+	pszValue = NULL;
+	return bRtn;
+}
+

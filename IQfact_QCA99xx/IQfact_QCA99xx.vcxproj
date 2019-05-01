@@ -1,0 +1,172 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{D8445F69-E25B-48AA-900B-65826554B3D2}</ProjectGuid>
+    <RootNamespace>IQfact_QCA99xx</RootNamespace>
+    <Keyword>MFCDLLProj</Keyword>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>Unicode</CharacterSet>
+    <UseOfMfc>Static</UseOfMfc>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>MultiByte</CharacterSet>
+    <UseOfMfc>Static</UseOfMfc>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;_DEBUG;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <ModuleDefinitionFile>.\IQfact_QCA99xx.def</ModuleDefinitionFile>
+    </Link>
+    <Midl>
+      <MkTypLibCompatible>false</MkTypLibCompatible>
+      <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </Midl>
+    <ResourceCompile>
+      <Culture>0x0404</Culture>
+      <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(IntDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <Optimization>Disabled</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <StructMemberAlignment>4Bytes</StructMemberAlignment>
+      <BrowseInformation>true</BrowseInformation>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <ModuleDefinitionFile>.\IQfact_QCA99xx.def</ModuleDefinitionFile>
+      <OutputFile>..\..\bin\$(ProjectName).dll</OutputFile>
+      <AdditionalDependencies>setupapi.lib;../../lib/release/UtilityDll.lib</AdditionalDependencies>
+      <ProgramDatabaseFile>.\release\$(TargerName).pdb</ProgramDatabaseFile>
+      <ImportLibrary>..\..\lib\release\$(TargetName).lib</ImportLibrary>
+    </Link>
+    <Midl>
+      <MkTypLibCompatible>false</MkTypLibCompatible>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </Midl>
+    <ResourceCompile>
+      <Culture>0x0404</Culture>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(IntDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <None Include="ClassDiagram1.cd" />
+    <None Include="ClassDiagram2.cd" />
+    <None Include="IQfact_QCA99xx.def" />
+    <None Include="ReadMe.txt" />
+    <None Include="res\IQfact_QCA99xx.rc2" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="CommFunc.cpp" />
+    <ClCompile Include="IQfact_QCA99xx.cpp" />
+    <ClCompile Include="MyClass\ART2_Test.cpp" />
+    <ClCompile Include="MyClass\BtGetTargetPower.cpp" />
+    <ClCompile Include="MyClass\BtInitialize.cpp" />
+    <ClCompile Include="MyClass\BtStartContModulatedTx.cpp" />
+    <ClCompile Include="MyClass\BtStartFrameModulatedTx.cpp" />
+    <ClCompile Include="MyClass\BtStopContModulatedTx.cpp" />
+    <ClCompile Include="MyClass\BtStopFrameModulatedTx.cpp" />
+    <ClCompile Include="MyClass\BtVerifyTestData.cpp" />
+    <ClCompile Include="MyClass\BtWriteTestData.cpp" />
+    <ClCompile Include="MyClass\LoadDutRequired.cpp" />
+    <ClCompile Include="MyClass\IQfact_Test.cpp" />
+    <ClCompile Include="MyClass\ParserCableLoss.cpp" />
+    <ClCompile Include="MyClass\PreLoadImage.cpp" />
+    <ClCompile Include="MyClass\StartContModulatedTx.cpp" />
+    <ClCompile Include="MyClass\StopContModulatedTx.cpp" />
+    <ClCompile Include="MyClass\VerifyTestData.cpp" />
+    <ClCompile Include="MyClass\WiFiInitialize.cpp" />
+    <ClCompile Include="MyClass\WiFiTerminate.cpp" />
+    <ClCompile Include="MyClass\WriteTestData.cpp" />
+    <ClCompile Include="stdafx.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\Common\MVTDef.h" />
+    <ClInclude Include="..\..\Common\UtilityDllDef.h" />
+    <ClInclude Include="CommFunc.h" />
+    <ClInclude Include="IQfact_QCA99xx.h" />
+    <ClInclude Include="IQfact_QCA99xxDef.h" />
+    <ClInclude Include="MyClass\ART2_Test.h" />
+    <ClInclude Include="MyClass\BtGetTargetPower.h" />
+    <ClInclude Include="MyClass\BtInitialize.h" />
+    <ClInclude Include="MyClass\BtStartContModulatedTx.h" />
+    <ClInclude Include="MyClass\BtStartFrameModulatedTx.h" />
+    <ClInclude Include="MyClass\BtStopContModulatedTx.h" />
+    <ClInclude Include="MyClass\BtStopFrameModulatedTx.h" />
+    <ClInclude Include="MyClass\BtVerifyTestData.h" />
+    <ClInclude Include="MyClass\BtWriteTestData.h" />
+    <ClInclude Include="MyClass\LoadDutRequired.h" />
+    <ClInclude Include="MyClass\IQfact_Test.h" />
+    <ClInclude Include="MyClass\ParserCableLoss.h" />
+    <ClInclude Include="MyClass\PreLoadImage.h" />
+    <ClInclude Include="MyClass\StartContModulatedTx.h" />
+    <ClInclude Include="MyClass\StopContModulatedTx.h" />
+    <ClInclude Include="MyClass\VerifyTestData.h" />
+    <ClInclude Include="MyClass\WiFiInitialize.h" />
+    <ClInclude Include="MyClass\WiFiTerminate.h" />
+    <ClInclude Include="MyClass\WriteTestData.h" />
+    <ClInclude Include="MyDef.h" />
+    <ClInclude Include="Resource.h" />
+    <ClInclude Include="stdafx.h" />
+    <ClInclude Include="targetver.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="IQfact_QCA99xx.rc" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

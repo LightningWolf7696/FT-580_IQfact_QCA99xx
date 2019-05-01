@@ -1,0 +1,63 @@
+#include "../StdAfx.h"
+#include "ParserCableLoss.h"
+
+
+CParserCableLoss::CParserCableLoss(void)
+{
+}
+
+CParserCableLoss::~CParserCableLoss(void)
+{
+
+}
+
+BOOL CParserCableLoss::START(LPSTR lpszRunInfo)
+{
+	AFX_MANAGE_STATE(AfxGetStaticModuleState());	
+	char szMessage[DLL_INFO_SIZE]={0};	
+	FILE *stream = NULL;
+	char lpszFileName[MAX_PATH]={0};
+	char szLocalPath[MAX_PATH]={0};
+
+	//Get local path
+	GetLocalDirectory(szLocalPath,szMessage);
+	sprintf_s(lpszFileName,sizeof(lpszFileName),"%sOEM\\%s\\%s",szLocalPath,g_GlobalInfo.CUSTOMER,"path_loss.csv");	
+	if(CheckFileExist(lpszFileName,szMessage)) DeleteFile(lpszFileName);
+
+	if((stream = fopen(lpszFileName, "w")) == NULL)
+	{
+		sprintf_s(lpszRunInfo,DLL_INFO_SIZE,"Can't parser cableLoss from DUT.[Name:%s]",lpszFileName);
+		return FALSE;
+	}
+	for (int i=0; i < (WIFI_CABLELOSS_ANTENNA*WIFI_CABLELOSS_MAX_ARY*WIFI_CABLELOSS_RESULT); i++)
+	{
+		char szCableLoss[64]={0};
+		double dbAntLoss[4]={0};
+		double dbFreq;
+		if((dbFreq = g_CableLoss.TxPath[0][i][0]) == 0) break;		
+		for(int j=0 ; j<4 ; j++)
+			dbAntLoss[j] = g_CableLoss.TxPath[j][i][1];
+		fprintf(stream,"%.0lf,%.1lf,%.1lf,%.1lf,%.1lf\n",dbFreq,dbAntLoss[0],dbAntLoss[1],dbAntLoss[2],dbAntLoss[3]);			
+	}
+	fclose(stream);
+	
+
+	sprintf_s(lpszFileName,sizeof(lpszFileName),"%sOEM\\%s\\%s",szLocalPath,g_GlobalInfo.CUSTOMER,"OEM.bat");	
+	if(CheckFileExist(lpszFileName,szMessage)) DeleteFile(lpszFileName);
+
+	if((stream = fopen(lpszFileName, "w")) == NULL)
+	{
+		sprintf_s(lpszRunInfo,DLL_INFO_SIZE,"Can't parser cableLoss from DUT.[Name:%s]",lpszFileName);
+		return FALSE;
+	}
+	
+	fprintf(stream,"cd %sOEM\\%s\\\n",szLocalPath,g_GlobalInfo.CUSTOMER);
+	fprintf(stream,"%c:\n",szLocalPath[0]);
+	fprintf(stream,"generate_path_loss2.exe\n");
+	fclose(stream);
+
+	WinExec(lpszFileName,SC_MINIMIZE);
+	strcpy_s(lpszRunInfo,DLL_INFO_SIZE,"Success to ParserCableLoss from DUT.");
+	return TRUE;
+}
+

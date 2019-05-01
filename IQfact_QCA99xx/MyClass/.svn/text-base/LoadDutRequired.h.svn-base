@@ -1,0 +1,21 @@
+#pragma once
+
+#include "../CommFunc.h"
+
+
+class CLoadDutRequired
+{
+public:
+	CLoadDutRequired(void);
+public:
+	~CLoadDutRequired(void);
+
+public:
+	BOOL START(BOOL bRetry, LPSTR lpszRunInfo);
+
+private:
+	
+	void CopyAllFolders(LPSTR szSrcPath, LPSTR szDestPath);
+	void CheckEquipment();
+	void ReplaceFileString(LPSTR szFileName, LPSTR szSrc, LPSTR szDest);
+};

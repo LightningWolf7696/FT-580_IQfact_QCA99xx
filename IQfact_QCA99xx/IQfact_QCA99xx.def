@@ -1,0 +1,35 @@
+; IQfact_QCA99xx.def : 宣告 DLL 的模組參數。
+
+LIBRARY
+
+EXPORTS
+    ; 明確匯出可置於此
+	LOAD_GUI_INFORMATION
+	CleanToDutParameter
+	SetToDutParameter
+	PreShootToDutParameter
+	WiFiInitialize
+	WiFiTerminate
+	LoadDutRequired
+	RestartDutTest
+	ReturnOemAppMessage
+	ReturnPreloadMessage
+	APPLICATION_CLOSE_TO_DUT
+	WriteResultToDut
+	ParserWiFiCableLossToDut
+	EepromVerification
+	PowerSupplyCtrl
+	SfcsResponds
+	GetRdModeLicense
+
+	BtInitialize		
+	BtStartFrameModulatedTx
+	BtStopFrameModulatedTx
+	BtStartContModulatedTx
+	BtStopContModulatedTx
+	BtGetTargetPower
+	BtEepromVerification
+	BtWriteResultToDut
+
+	StartContModulatedTx
+	StopContModulatedTx

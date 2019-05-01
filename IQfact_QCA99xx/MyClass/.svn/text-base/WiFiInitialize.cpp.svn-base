@@ -1,0 +1,62 @@
+#include "../StdAfx.h"
+#include "WiFiInitialize.h"
+
+CWiFiInitialize::CWiFiInitialize(void)
+{
+}
+
+CWiFiInitialize::~CWiFiInitialize(void)
+{
+
+}
+
+BOOL CWiFiInitialize::START(BOOL bRetry, LPSTR lpszRunInfo)
+{
+	AFX_MANAGE_STATE(AfxGetStaticModuleState());	
+	char szMessage[DLL_INFO_SIZE]={0};
+	char szAppFilePath[MAX_PATH]={0};
+	HWND hWnd = NULL;
+	char szRunMode[16]={0};
+	char szArguments[100]={0};
+	char szLogFile[MAX_PATH]={0};
+
+	sprintf_s(szAppFilePath,MAX_PATH,"%sOEM\\%s\\%s", g_GlobalInfo.szLocalPath,g_GlobalInfo.CUSTOMER,OemAppFileName);
+
+	//Check application file exist.
+	if(!CheckFileExist(szAppFilePath,szMessage))
+	{
+		sprintf_s(lpszRunInfo,DLL_INFO_SIZE,"Failed to open %s file (%s)!!",szAppFilePath, szMessage);
+		return FALSE;
+	}
+
+	//Clean Oem Application
+	do
+	{
+		if((hWnd = ::FindWindow(NULL,szAppFilePath)))
+			::SendMessage(hWnd, WM_SYSCOMMAND, SC_CLOSE, NULL);					
+	}while(hWnd);
+	
+	//Open Customer Application file		
+	if(g_GlobalInfo.eSfcsMode == SFCS_ONLINE)
+		strCopy(szRunMode,"-ONFAIL 1");//StopOnFailed.
+	else{
+		if(g_GlobalInfo.bStopOnFailed == TRUE)
+			strCopy(szRunMode,"-ONFAIL 1");//StopOnFailed.
+		else
+			strCopy(szRunMode,"-ONFAIL 0");//ContinueOnFailed.
+	}
+
+//	sprintf_s(szAppFilePath,MAX_PATH,"%s -run %sOEM\\%s\\%s %s",szAppFilePath,g_GlobalInfo.szLocalPath,g_GlobalInfo.CUSTOMER,OemDestFileName,szRunMode);
+//	sprintf_s(szAppFilePath,MAX_PATH,"%s -run %s %s",szAppFilePath,OemDestFileName,szRunMode);
+	sprintf_s(szArguments,sizeof(szArguments),"-run %s %s",OemDestFileName,szRunMode);
+	sprintf_s(szLogFile,sizeof(szLogFile),"%sOEM\\%s\\%s",g_GlobalInfo.szLocalPath,g_GlobalInfo.CUSTOMER,OemAppLogFile);
+	if(!PipeOpenBAT(szAppFilePath,szArguments,szLogFile,lpszRunInfo))
+	{
+		sprintf_s(lpszRunInfo,DLL_INFO_SIZE,"Can't create pipe process;[Name:%s;Argument:%s]",szAppFilePath,szArguments);
+		return FALSE;
+	}
+	
+	strcpy_s(lpszRunInfo,DLL_INFO_SIZE,"DUT was successfully initialized.");
+	return TRUE;
+}
+

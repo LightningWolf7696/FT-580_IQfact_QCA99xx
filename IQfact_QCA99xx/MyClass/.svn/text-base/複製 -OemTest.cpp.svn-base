@@ -1,0 +1,603 @@
+#include "../StdAfx.h"
+#include "OemTest.h"
+#include <io.h>
+
+#define szSeparateKey  "\n"
+
+COemTest::COemTest(void)
+{
+}
+
+COemTest::~COemTest(void)
+{
+
+}
+
+void COemTest::CLEAN()
+{
+	zeroIt(m_WiFiTestData);	
+	CleanErrorReport();
+	return;
+}
+void COemTest::CleanErrorReport()
+{
+	m_ErrorReport.DisableSfcsLink = FALSE;
+	strCopy(m_ErrorReport.ErrorCode,_T("No Error"));
+	strCopy(m_ErrorReport.ErrorDetail,_T("No Error"));
+	strCopy(m_ErrorReport.ErrorMsg,_T("No Error"));
+	strCopy(m_ErrorReport.FailedTest,_T("No Error"));
+	m_ErrorReport.TestResult = TRUE;
+	m_eTestType = NOT_DEFINE_TEST;		
+}
+TM_RETURN COemTest::START(funcGetMessage cbLogMessage, funcGetMessage cbXmlMessage, funcGetMessage cbSfcsSpecMessage, funcGetMessage cbSfcsResultMessage, ERRORREPORT &ErrorReport)
+{
+	char szConsoleMsg[PIPE_MAX_LENGTH]={0},szConsoleTemp[PIPE_MAX_LENGTH/2],szAvailMsg[PIPE_MAX_LENGTH]={0};
+	double dbStartTime = GetTickCount();
+	int nTimeOutSec = 30;
+	DWORD dwBytesRead;
+	BOOL bRtn = FALSE;
+	char szMessage[DLL_INFO_SIZE]={0};	
+
+	char szFullCmd[64]={0};
+	static BOOL bInitialize = FALSE;
+	char szLogFile[MAX_PATH]={0};
+	
+	sprintf_s(szLogFile,sizeof(szLogFile),"%sOEM\\%s\\%s",g_GlobalInfo.szLocalPath,g_GlobalInfo.CUSTOMER,OemAppLogFile);
+	PipeCleanBAT();
+	
+	if(CheckFileExist(szLogFile,szMessage))
+		DeleteFile(szLogFile);
+		
+	sprintf_s(szLogFile,sizeof(szLogFile),"%s%s",g_GlobalInfo.szLocalPath,_T("OEM\\Cambium\\Log\\TXCalDataLogFile.txt"));
+	if(CheckFileExist(szLogFile,szMessage))
+		DeleteFile(szLogFile);
+
+	if(!bInitialize)
+		bInitialize = TRUE;
+	else{
+		HWND hWnd;
+		char szAppFilePath[MAX_PATH]={0};		
+		sprintf_s(szAppFilePath,MAX_PATH,"%sOEM\\%s\\%s", g_GlobalInfo.szLocalPath,g_GlobalInfo.CUSTOMER,OemAppFileName);
+		if(!(hWnd = ::FindWindow(NULL,szAppFilePath)))
+		{			
+			ErrorReport.DisableSfcsLink = TRUE;
+			strCopy(ErrorReport.ErrorCode,_T("T089"));
+			strCopy(ErrorReport.ErrorDetail,_T("NULL"));
+			sprintf_s(ErrorReport.ErrorMsg,sizeof(ErrorReport.ErrorMsg),"Not found OEM application handle.[%s]",szAppFilePath);
+			strCopy(ErrorReport.FailedTest,_T("OEM TEST"));
+			ErrorReport.TestResult = FALSE;
+			return TM_RETURN_ERROR;	
+		}
+		SendMessage(hWnd, WM_CHAR, 13, NULL);
+	}
+		
+	int i=0;
+	do
+	{
+		m_dbTestTimeCost = GetTickCount();
+//		zeroIt(szConsoleMsg);
+
+		do
+		{
+			zeroIt(szConsoleTemp);			
+			if(!PipeReadDataBAT(szConsoleTemp, sizeof(szConsoleTemp), dwBytesRead, szMessage))
+			{
+				ErrorReport.DisableSfcsLink = FALSE;
+				strCopy(ErrorReport.ErrorCode,_T("T089"));
+				strCopy(ErrorReport.ErrorDetail,_T("NULL"));
+				strCopy(ErrorReport.ErrorMsg,szMessage);
+				strCopy(ErrorReport.FailedTest,_T("Read data from pipe failed"));
+				ErrorReport.TestResult = FALSE;
+				return TM_RETURN_ERROR;	
+			}
+			strcat_s(szConsoleMsg,strlen(szConsoleMsg)+strlen(szConsoleTemp)+1,szConsoleTemp);
+			Sleep(10);
+			//if(((GetTickCount() - dbStartTime)/1000) > nTimeOutSec)
+			//{
+			//	sprintf_s(lpszRunInfo,DLL_INFO_SIZE,"Get message is timeout [%d sec]",nTimeOutSec);
+			//	return FALSE;
+			//}
+		} while (!strstr(szConsoleMsg, szSeparateKey));	
+
+		do 
+		{
+			zeroIt(szAvailMsg);
+			if(!CombineMessage(szConsoleMsg, szAvailMsg, sizeof(szAvailMsg), szSeparateKey)) break;
+			CollectTestData(cbLogMessage, cbXmlMessage, cbSfcsSpecMessage, cbSfcsResultMessage, szAvailMsg);
+			if(m_eTestType == TEST_RESULT)
+				goto FinishTest;
+		} while (1);
+
+
+	} while (1);
+
+FinishTest:
+	memcpy_s(&ErrorReport, sizeof(ErrorReport), &m_ErrorReport, sizeof(ERRORREPORT));
+	ExternalController();
+
+	if(strcmp(m_ErrorReport.FailedTest,_T("Missing Test Data")) == NULL)
+		AfxMessageBox("Missing test data, please call PE");
+	if(ErrorReport.TestResult)
+		return TM_RETURN_PASS;
+	else if(ErrorReport.DisableSfcsLink)
+		return TM_RETURN_ERROR;
+	else
+		return TM_RETURN_FAIL;
+}
+
+void COemTest::CollectTestData(funcGetMessage cbLogMessage, funcGetMessage cbXmlMessage, funcGetMessage cbSfcsSpecMessage, funcGetMessage cbSfcsResultMessage, LPSTR lpszMessage)
+{
+	CString strTemp;		
+	strTemp.Format(_T("%s"),lpszMessage);
+	if(strstr(lpszMessage,"%"))								
+		strTemp.Replace("%","%%%%%%%%");
+
+	//Recode Log
+	CCommFunc::ExportTestMessage(cbLogMessage, strTemp.GetBuffer());
+	SeparateData(lpszMessage);
+
+	if((!m_FinishedKeyWord) || (m_eTestType == NOT_DEFINE_TEST))
+		return;
+
+//XML	
+	if(m_eTestType == WIFI_EVM_TEST)
+		CCommFunc::ExportTestMessage(cbXmlMessage, "<TestCase name=\"%s\">","TX_VERIFY_EVM");
+	else if(m_eTestType == WIFI_MASK_TEST)
+		CCommFunc::ExportTestMessage(cbXmlMessage, "<TestCase name=\"%s\">","TX_VERIFY_MASK");
+	else if(m_eTestType == WIFI_RXPER_TEST)
+		CCommFunc::ExportTestMessage(cbXmlMessage, "<TestCase name=\"%s\">","RX_VERIFY_PER");
+	else if(m_eTestType == WIFI_RX_SWEEP_TEST)
+		CCommFunc::ExportTestMessage(cbXmlMessage, "<TestCase name=\"%s\">","RX_SWEEP_PER");
+
+	CCommFunc::ExportTestMessage(cbXmlMessage, "<Data>");	
+
+	if(m_eTestType == WIFI_EVM_TEST){
+		CreateXmlData(cbXmlMessage, m_WiFiTestData.Evm, _T("FREQ_MHZ"), m_WiFiTestData.Evm.szFreq);
+		CreateXmlData(cbXmlMessage, m_WiFiTestData.Evm, _T("DATA_RATE"), m_WiFiTestData.Evm.szDataRate);
+		CreateXmlData(cbXmlMessage, m_WiFiTestData.Evm, _T("BANDWIDTH"), m_WiFiTestData.Evm.szBandWidth);
+		CreateXmlData(cbXmlMessage, m_WiFiTestData.Evm, _T("ANTENNA"), SyncAntenna(m_WiFiTestData.Evm.Antenna));
+		CreateXmlData(cbXmlMessage, m_WiFiTestData.Evm, _T("TX_POWER_DBM"), m_WiFiTestData.Evm.szExpectPwr);
+
+		CreateXmlData(cbXmlMessage, m_WiFiTestData.Evm, _T("EVM_AVG_PERCENT"), m_WiFiTestData.Evm.szEvm);
+		CreateXmlData(cbXmlMessage, m_WiFiTestData.Evm, _T("FREQ_ERROR_AVG"), m_WiFiTestData.Evm.szPPM);
+		CreateXmlData(cbXmlMessage, m_WiFiTestData.Evm, _T("POWER_AVG_DBM"), m_WiFiTestData.Evm.szActualPwr);
+
+	}else if(m_eTestType == WIFI_MASK_TEST){
+		CreateXmlData(cbXmlMessage, m_WiFiTestData.Mask, _T("FREQ_MHZ"), m_WiFiTestData.Mask.szFreq);
+		CreateXmlData(cbXmlMessage, m_WiFiTestData.Mask, _T("DATA_RATE"), m_WiFiTestData.Mask.szDataRate);
+		CreateXmlData(cbXmlMessage, m_WiFiTestData.Mask, _T("BANDWIDTH"), m_WiFiTestData.Mask.szBandWidth);
+		CreateXmlData(cbXmlMessage, m_WiFiTestData.Mask, _T("ANTENNA"), SyncAntenna(m_WiFiTestData.Mask.Antenna));
+		CreateXmlData(cbXmlMessage, m_WiFiTestData.Mask, _T("TX_POWER_DBM"), m_WiFiTestData.Mask.szExpectPwr);
+
+		CreateXmlData(cbXmlMessage, m_WiFiTestData.Mask, _T("VIOLATION_PERCENT"), m_WiFiTestData.Mask.szMaskViolationPercent);
+	}else if(m_eTestType == WIFI_RXPER_TEST){
+		CreateXmlData(cbXmlMessage, m_WiFiTestData.RxPER, _T("FREQ_MHZ"), m_WiFiTestData.RxPER.szFreq);
+		CreateXmlData(cbXmlMessage, m_WiFiTestData.RxPER, _T("DATA_RATE"), m_WiFiTestData.RxPER.szDataRate);
+		CreateXmlData(cbXmlMessage, m_WiFiTestData.RxPER, _T("BANDWIDTH"), m_WiFiTestData.RxPER.szBandWidth);
+		CreateXmlData(cbXmlMessage, m_WiFiTestData.RxPER, _T("ANTENNA"), SyncAntenna(m_WiFiTestData.RxPER.Antenna));
+		CreateXmlData(cbXmlMessage, m_WiFiTestData.RxPER, _T("RX_POWER_DBM"), m_WiFiTestData.RxPER.szExpectPwr);
+
+		CreateXmlData(cbXmlMessage, m_WiFiTestData.RxPER, _T("PER"), m_WiFiTestData.RxPER.szRxPER);
+	}else if(m_eTestType == WIFI_RX_SWEEP_TEST){
+		CreateXmlData(cbXmlMessage, m_WiFiTestData.RxSweep, _T("FREQ_MHZ"), m_WiFiTestData.RxSweep.szFreq);
+		CreateXmlData(cbXmlMessage, m_WiFiTestData.RxSweep, _T("DATA_RATE"), m_WiFiTestData.RxSweep.szDataRate);
+		CreateXmlData(cbXmlMessage, m_WiFiTestData.RxSweep, _T("BANDWIDTH"), m_WiFiTestData.RxSweep.szBandWidth);
+		CreateXmlData(cbXmlMessage, m_WiFiTestData.RxSweep, _T("ANTENNA"), SyncAntenna(m_WiFiTestData.RxSweep.Antenna));
+		CreateXmlData(cbXmlMessage, m_WiFiTestData.RxSweep, _T("START_SWEEP_RXPER"), m_WiFiTestData.RxSweep.szStartRxPER);
+		CreateXmlData(cbXmlMessage, m_WiFiTestData.RxSweep, _T("STOP_SWEEP_RXPER"), m_WiFiTestData.RxSweep.szStopRxPER);
+		
+		CreateXmlData(cbXmlMessage, m_WiFiTestData.RxSweep, _T("SENS_POWER_LEVEL_DBM"), m_WiFiTestData.RxSweep.szRxPER);
+	}
+	CCommFunc::ExportTestMessage(cbXmlMessage, "<TEST_TIME>%.3f</TEST_TIME>", (float)((GetTickCount() - m_dbTestTimeCost)/1000));
+	CCommFunc::ExportTestMessage(cbXmlMessage, "</Data>");
+	CCommFunc::ExportTestMessage(cbXmlMessage, "</TestCase>");
+
+	
+	if(m_eTestType == WIFI_EVM_TEST){
+		//Record Spec to SFCS
+		CCommFunc::ExportTestMessage(cbSfcsSpecMessage, "WiFiTxPowerVerification-F%sA%sR%sBW%s_S_%s", 
+														m_WiFiTestData.Evm.szFreq, 
+														SyncAntenna(m_WiFiTestData.Evm.Antenna,TRUE), 
+														m_WiFiTestData.Evm.szDataRate, 
+														m_WiFiTestData.Evm.szBandWidth,
+														m_WiFiTestData.Evm.szExpectPwr);
+		//Record Result to SFCS TxPower Verification
+		CCommFunc::ExportTestMessage(cbSfcsResultMessage, "WiFiTxPowerVerification-F%sA%sR%sBW%s_%s",
+														m_WiFiTestData.Evm.szFreq, 
+														SyncAntenna(m_WiFiTestData.Evm.Antenna,TRUE), 
+														m_WiFiTestData.Evm.szDataRate, 
+														m_WiFiTestData.Evm.szBandWidth,
+														m_WiFiTestData.Evm.szActualPwr);
+
+		//Record Result to SFCS TxEVM
+		CCommFunc::ExportTestMessage(cbSfcsResultMessage, "WiFiTxEVM-F%sA%sR%sBW%s_%s",
+														m_WiFiTestData.Evm.szFreq, 
+														SyncAntenna(m_WiFiTestData.Evm.Antenna,TRUE), 
+														m_WiFiTestData.Evm.szDataRate, 
+														m_WiFiTestData.Evm.szBandWidth,
+														m_WiFiTestData.Evm.szEvm);	
+		//Record Result to SFCS FreqErr
+		CCommFunc::ExportTestMessage(cbSfcsResultMessage, "WiFiFreqErr-F%sA%sR%sBW%s_%s",
+														m_WiFiTestData.Evm.szFreq, 
+														SyncAntenna(m_WiFiTestData.Evm.Antenna,TRUE), 
+														m_WiFiTestData.Evm.szDataRate, 
+														m_WiFiTestData.Evm.szBandWidth,
+														m_WiFiTestData.Evm.szPPM);	
+	}else if(m_eTestType == WIFI_MASK_TEST){
+		//Record Result to SFCS Spectrum Mask Verification
+		CCommFunc::ExportTestMessage(cbSfcsResultMessage, "WiFiMaskVerification-F%sA%sR%sBW%s_%s",
+			m_WiFiTestData.Mask.szFreq, 
+			SyncAntenna(m_WiFiTestData.Mask.Antenna,TRUE), 
+			m_WiFiTestData.Mask.szDataRate, 
+			m_WiFiTestData.Mask.szBandWidth,
+			m_WiFiTestData.Mask.szMaskViolationPercent);	
+
+	}else if(m_eTestType == WIFI_RXPER_TEST){
+		//Record Result to SFCS Rx PER Verification
+		CCommFunc::ExportTestMessage(cbSfcsResultMessage, "WiFiRxPerVerification-F%sA%sR%sBW%s_%s",
+			m_WiFiTestData.RxPER.szFreq, 
+			SyncAntenna(m_WiFiTestData.RxPER.Antenna,TRUE), 
+			m_WiFiTestData.RxPER.szDataRate, 
+			m_WiFiTestData.RxPER.szBandWidth,
+			m_WiFiTestData.RxPER.szRxPER);	
+	}else if(m_eTestType == WIFI_RX_SWEEP_TEST){
+		//Record Result to SFCS Rx PER Verification
+		CCommFunc::ExportTestMessage(cbSfcsResultMessage, "WiFiRxSweepPerVerification-F%sA%sR%sBW%s_%s",
+			m_WiFiTestData.RxSweep.szFreq, 
+			SyncAntenna(m_WiFiTestData.RxSweep.Antenna,TRUE), 
+			m_WiFiTestData.RxSweep.szDataRate, 
+			m_WiFiTestData.RxSweep.szBandWidth,
+			m_WiFiTestData.RxSweep.szRxPER);	
+	}
+
+
+
+}
+
+BOOL COemTest::CombineMessage(LPSTR lpszSrcData, LPSTR lpszAvailData, int nAvailLens, LPSTR szKey)
+{
+	TCHAR *pszToken;
+	CString strKey,strSrcData;
+	int nAddr;
+	pszToken = strstr(lpszSrcData, szKey);
+	if(pszToken)
+	{
+		nAddr = pszToken-lpszSrcData;
+		strSrcData.Format(_T("%s"),lpszSrcData);
+		//create available data
+		strKey = strSrcData.Left(nAddr);
+		strcpy_s(lpszAvailData,nAvailLens,strKey);
+
+		//separate unused data
+		strKey = strSrcData.Mid(nAddr+1);
+		strcpy_s(lpszSrcData, PIPE_MAX_LENGTH, strKey);
+		return TRUE;
+	}
+
+	return FALSE;
+}
+
+void COemTest::SeparateData(LPSTR lpszMessage)
+{
+	
+	CString strKey;	
+	int nFindAddr;
+
+	strKey.Format("%s",lpszMessage);
+	if(strKey.Find("__________________") >= 0)
+	{
+		if(strKey.Find("TX_VERIFY_EVM") >= 0)		
+			m_eTestType = WIFI_EVM_TEST;
+		else if(strKey.Find("TX_VERIFY_MASK") >= 0)		
+			m_eTestType = WIFI_MASK_TEST;
+		else if(strKey.Find("RX_VERIFY_PER") >= 0)		
+			m_eTestType = WIFI_RXPER_TEST;
+		else if(strKey.Find("RX_SWEEP_PER") >= 0)		
+			m_eTestType = WIFI_RX_SWEEP_TEST;
+		else
+			m_eTestType = NOT_DEFINE_TEST;
+		zeroIt(m_WiFiTestData);
+	}else if(strKey.Find("F A I L") >= 0){
+		if(m_ErrorReport.TestResult)
+		{
+			strCopy(m_ErrorReport.FailedTest, "UNKNOW");
+			strCopy(m_ErrorReport.ErrorDetail,_T("NULL"));
+			sprintf_s(m_ErrorReport.ErrorMsg,sizeof(m_ErrorReport.ErrorMsg),"Error not define.");
+			strCopy(m_ErrorReport.ErrorCode,_T("T1060"));
+			m_ErrorReport.TestResult = FALSE;
+			m_ErrorReport.DisableSfcsLink = FALSE;
+		}
+	}else if(strKey.Find("<--Failed") >= 0){
+		if((!m_ErrorReport.TestResult) && (strcmp(m_ErrorReport.ErrorCode,_T("T089")) == 0))
+		{
+			BOOL bUnDefine = FALSE;
+			if(strKey.Find("INSERT_DUT") >= 0){
+				strCopy(m_ErrorReport.FailedTest, "INSERT_DUT");
+				strCopy(m_ErrorReport.ErrorCode,_T("T001"));
+			}else if(strKey.Find("INITIALIZE_DUT") >= 0){
+				strCopy(m_ErrorReport.FailedTest, "INITIALIZE_DUT");
+				strCopy(m_ErrorReport.ErrorCode,_T("T001"));
+			}else if(strKey.Find("XTAL_CALIBRATION") >= 0){
+				strCopy(m_ErrorReport.FailedTest, "XTAL_CALIBRATION");
+				strCopy(m_ErrorReport.ErrorCode,_T("T189"));
+			}else if(strKey.Find("TX_CALIBRATION") >= 0){
+				strCopy(m_ErrorReport.FailedTest, "TX_CALIBRATION");
+				strCopy(m_ErrorReport.ErrorCode,_T("T189"));
+			}else if(strKey.Find("RX_CALIBRATION") >= 0){
+				strCopy(m_ErrorReport.FailedTest, "RX_CALIBRATION");
+				strCopy(m_ErrorReport.ErrorCode,_T("T189"));
+			}else
+				bUnDefine = TRUE;
+		
+			if(!bUnDefine)
+			{
+				strCopy(m_ErrorReport.ErrorDetail,_T("NULL"));
+				strCopy(m_ErrorReport.ErrorMsg,_T("NULL"));		
+				m_ErrorReport.TestResult = FALSE;
+				m_ErrorReport.DisableSfcsLink = FALSE;
+			}
+		}//if((!m_ErrorReport.TestResult) && strcmp(m_ErrorReport.ErrorCode,_T("T089")))
+	}else if(strKey.Find("Test Function Time") >= 0){
+		m_eTestType = TEST_RESULT;
+	}else if((strKey.Find("IQMEASURE_VERSION") >= 0) && (strlen(g_GlobalInfo.szIQMeasure) == 0)){//Get IQmeasure version
+		nFindAddr = strKey.Find(":");
+		strKey = strKey.Mid(nFindAddr+1);
+		strKey.Trim();
+		sprintf_s(g_GlobalInfo.szIQMeasure,"%s",strKey.GetBuffer());		
+	}else if((strKey.Find("IQTESTER_SERIAL_NUM") >= 0) && (strlen(g_GlobalInfo.szIQTesterName) == 0)){//Get IQmeasure version
+		nFindAddr = strKey.Find(":");
+		strKey = strKey.Mid(nFindAddr+1);
+		strKey.Trim();
+		sprintf_s(g_GlobalInfo.szIQTesterName,"%s",strKey.GetBuffer());
+	}
+
+
+	if(m_eTestType == WIFI_EVM_TEST)
+	{
+		GetXmlTestInfo(strKey.GetBuffer(), "FREQ_MHZ",_T("MHz"), m_WiFiTestData.Evm.szFreq);
+		GetXmlTestInfo(strKey.GetBuffer(), "TX_POWER_DBM",_T("dBm"), m_WiFiTestData.Evm.szExpectPwr);
+		GetXmlTestInfo(strKey.GetBuffer(), "BANDWIDTH",_T(""), m_WiFiTestData.Evm.szBandWidth);
+		GetXmlTestInfo(strKey.GetBuffer(), "TX1",_T(""), m_WiFiTestData.Evm.Antenna.A);
+		GetXmlTestInfo(strKey.GetBuffer(), "TX2",_T(""), m_WiFiTestData.Evm.Antenna.B);
+		GetXmlTestInfo(strKey.GetBuffer(), "TX3",_T(""), m_WiFiTestData.Evm.Antenna.C);
+		GetXmlTestInfo(strKey.GetBuffer(), "TX4",_T(""), m_WiFiTestData.Evm.Antenna.D);
+		if(!strstr(strKey.GetBuffer(),"Mbps"))// skip redefinition error
+			GetXmlTestInfo(strKey.GetBuffer(), "DATA_RATE",_T(""), m_WiFiTestData.Evm.szDataRate);
+
+		sprintf_s(m_szCurrTestInfo,sizeof(m_szCurrTestInfo),"ANT:%s;FERQ:%s;RATE:%s;BW:%s;PWR:%s",SyncAntenna(m_WiFiTestData.Evm.Antenna),m_WiFiTestData.Evm.szFreq,m_WiFiTestData.Evm.szDataRate,m_WiFiTestData.Evm.szBandWidth,m_WiFiTestData.Evm.szExpectPwr);
+		CreateErrorReport(strKey.GetBuffer(),"EVM_AVG_PERCENT",_T("%"),m_WiFiTestData.Evm.szEvm,_T("TX_VERIFY_EVM"),_T("T214"));//EVM Fail
+		CreateErrorReport(strKey.GetBuffer(),"FREQ_ERROR_AVG",_T("ppm"),m_WiFiTestData.Evm.szPPM,_T("TX_VERIFY_EVM"),_T("T007"));//PPM Fail
+		CreateErrorReport(strKey.GetBuffer(),"POWER_AVG_DBM",_T("dBm"),m_WiFiTestData.Evm.szActualPwr,_T("TX_VERIFY_EVM"),_T("T830"));//Power Fail
+
+	}else if(m_eTestType == WIFI_MASK_TEST){
+		GetXmlTestInfo(strKey.GetBuffer(), "FREQ_MHZ",_T("MHz"), m_WiFiTestData.Mask.szFreq);
+		GetXmlTestInfo(strKey.GetBuffer(), "TX_POWER_DBM",_T("dBm"), m_WiFiTestData.Mask.szExpectPwr);
+		GetXmlTestInfo(strKey.GetBuffer(), "BANDWIDTH",_T(""), m_WiFiTestData.Mask.szBandWidth);
+		GetXmlTestInfo(strKey.GetBuffer(), "TX1",_T(""), m_WiFiTestData.Mask.Antenna.A);
+		GetXmlTestInfo(strKey.GetBuffer(), "TX2",_T(""), m_WiFiTestData.Mask.Antenna.B);
+		GetXmlTestInfo(strKey.GetBuffer(), "TX3",_T(""), m_WiFiTestData.Mask.Antenna.C);
+		GetXmlTestInfo(strKey.GetBuffer(), "TX4",_T(""), m_WiFiTestData.Mask.Antenna.D);
+		if(!strstr(strKey.GetBuffer(),"Mbps"))// skip redefinition error
+			GetXmlTestInfo(strKey.GetBuffer(), "DATA_RATE",_T(""), m_WiFiTestData.Mask.szDataRate);
+		sprintf_s(m_szCurrTestInfo,sizeof(m_szCurrTestInfo),"ANT:%s;FERQ:%s;RATE:%s;BW:%s;PWR:%s",SyncAntenna(m_WiFiTestData.Mask.Antenna),m_WiFiTestData.Mask.szFreq,m_WiFiTestData.Mask.szDataRate,m_WiFiTestData.Mask.szBandWidth,m_WiFiTestData.Mask.szExpectPwr);
+		CreateErrorReport(strKey.GetBuffer(),"VIOLATION_PERCENT",_T("%"),m_WiFiTestData.Mask.szMaskViolationPercent,_T("TX_VERIFY_MASK"),_T("T220"));
+	}else if(m_eTestType == WIFI_RXPER_TEST){
+		GetXmlTestInfo(strKey.GetBuffer(), "FREQ_MHZ",_T("MHz"), m_WiFiTestData.RxPER.szFreq);
+		GetXmlTestInfo(strKey.GetBuffer(), "RX_POWER_DBM",_T("dBm"), m_WiFiTestData.RxPER.szExpectPwr);
+		GetXmlTestInfo(strKey.GetBuffer(), "BANDWIDTH",_T(""), m_WiFiTestData.RxPER.szBandWidth);
+		GetXmlTestInfo(strKey.GetBuffer(), "RX1",_T(""), m_WiFiTestData.RxPER.Antenna.A);
+		GetXmlTestInfo(strKey.GetBuffer(), "RX2",_T(""), m_WiFiTestData.RxPER.Antenna.B);
+		GetXmlTestInfo(strKey.GetBuffer(), "RX3",_T(""), m_WiFiTestData.RxPER.Antenna.C);
+		GetXmlTestInfo(strKey.GetBuffer(), "RX4",_T(""), m_WiFiTestData.RxPER.Antenna.D);
+		if(!strstr(strKey.GetBuffer(),"Mbps"))// skip redefinition error
+			GetXmlTestInfo(strKey.GetBuffer(), "DATA_RATE",_T(""), m_WiFiTestData.RxPER.szDataRate);
+		sprintf_s(m_szCurrTestInfo,sizeof(m_szCurrTestInfo),"ANT:%s;FERQ:%s;RATE:%s;BW:%s;PWR:%s",SyncAntenna(m_WiFiTestData.RxPER.Antenna),m_WiFiTestData.RxPER.szFreq,m_WiFiTestData.RxPER.szDataRate,m_WiFiTestData.RxPER.szBandWidth,m_WiFiTestData.RxPER.szExpectPwr);
+		CreateErrorReport(strKey.GetBuffer(),"PER",_T("%"),m_WiFiTestData.RxPER.szRxPER,_T("RX_VERIFY_PER"),_T("T222"));
+	}else if(m_eTestType == WIFI_RX_SWEEP_TEST){
+		GetXmlTestInfo(strKey.GetBuffer(), "FREQ_MHZ",_T("MHz"), m_WiFiTestData.RxSweep.szFreq);
+		GetXmlTestInfo(strKey.GetBuffer(), "START_POWER_LEVEL_DBM",_T("dBm"), m_WiFiTestData.RxSweep.szStartRxPER);
+		GetXmlTestInfo(strKey.GetBuffer(), "STOP_POWER_LEVEL_DBM",_T("dBm"), m_WiFiTestData.RxSweep.szStopRxPER);
+		GetXmlTestInfo(strKey.GetBuffer(), "BANDWIDTH",_T(""), m_WiFiTestData.RxSweep.szBandWidth);
+		GetXmlTestInfo(strKey.GetBuffer(), "RX1",_T(""), m_WiFiTestData.RxSweep.Antenna.A);
+		GetXmlTestInfo(strKey.GetBuffer(), "RX2",_T(""), m_WiFiTestData.RxSweep.Antenna.B);
+		GetXmlTestInfo(strKey.GetBuffer(), "RX3",_T(""), m_WiFiTestData.RxSweep.Antenna.C);
+		GetXmlTestInfo(strKey.GetBuffer(), "RX4",_T(""), m_WiFiTestData.RxSweep.Antenna.D);
+		if(!strstr(strKey.GetBuffer(),"Mbps"))// skip redefinition error
+			GetXmlTestInfo(strKey.GetBuffer(), "DATA_RATE",_T(""), m_WiFiTestData.RxSweep.szDataRate);
+		sprintf_s(m_szCurrTestInfo,sizeof(m_szCurrTestInfo),"ANT:%s;FERQ:%s;RATE:%s;BW:%s;START:%s;STOP:%s",SyncAntenna(m_WiFiTestData.RxSweep.Antenna),m_WiFiTestData.RxSweep.szFreq,m_WiFiTestData.RxSweep.szDataRate,m_WiFiTestData.RxSweep.szBandWidth,m_WiFiTestData.RxSweep.szStartRxPER,m_WiFiTestData.RxSweep.szStopRxPER);
+		CreateErrorReport(strKey.GetBuffer(),"SENS_POWER_LEVEL_DBM",_T("dBm"),m_WiFiTestData.RxSweep.szRxPER,_T("RX_SWEEP_PER"),_T("T222"));
+	}	
+
+	if(strstr(lpszMessage,"ERROR_MESSAGE"))
+	{
+		if(strstr(lpszMessage,"Test Item Skipped by StopOnFail"))
+			m_FinishedKeyWord = FALSE;
+		else
+			m_FinishedKeyWord = TRUE;
+	}
+	else
+		m_FinishedKeyWord = FALSE;
+
+	return;
+}
+
+void COemTest::GetXmlTestInfo(LPSTR lpszMessage, LPSTR szKeyName, LPSTR szResultType, LPSTR szSingleData)
+{
+	CString strKey;
+	TCHAR *pszToken;
+
+	if(strstr(lpszMessage,szKeyName))//Find key word
+	{
+		pszToken = strtok(lpszMessage, ":");
+		if(strlen(szKeyName))
+			pszToken = strtok(NULL, szResultType);			
+		strKey.Format(_T("%s"), pszToken);
+		strKey = strKey.Trim();
+		sprintf_s(szSingleData, XML_DATA_SIZE, "%s", strKey);
+	}
+
+	return;
+}
+
+void COemTest::CreateErrorReport(LPSTR lpszMessage, LPSTR szKeyName, LPSTR szResultType, LPSTR szActual, LPSTR szFailTest, LPSTR szErrorCode)
+{	
+	CString strKey,strLow,strHigh, strActual, strTemp;	
+	char szHigh[16]={0};
+	char szLow[16]={0};
+	
+	if(strstr(lpszMessage,szKeyName))//Find key word
+	{
+		strKey.Format(_T("%s"), lpszMessage);		
+		strKey = strKey.Mid(strKey.Find(_T(":"))+1);
+		strActual = strKey.Left(strKey.Find(_T(szResultType)));
+		strActual.Trim();
+		sprintf_s(szActual, XML_DATA_SIZE, "%s", strActual.GetBuffer());
+		strKey = strKey.Mid(strKey.Find(_T(szResultType))+1);
+		strKey = strKey.Mid(strKey.Find(_T("("))+1);
+		strLow = strKey.Left(strKey.Find(_T(",")));
+		strLow.Trim();
+		strKey = strKey.Mid(strKey.Find(_T(","))+1);
+		strHigh = strKey.Left(strKey.Find(_T(")")));
+		strHigh.Trim();
+		strKey = strKey.Mid(strKey.Find(_T(")"))+1);
+		if(strKey.Find(_T("Failed")) >= 0)
+		{
+			strCopy(m_ErrorReport.FailedTest, szFailTest);
+			strCopy(m_ErrorReport.ErrorDetail,_T("NULL"));
+			sprintf_s(m_ErrorReport.ErrorMsg,sizeof(m_ErrorReport.ErrorMsg),"[%s]%s;Low:%s;High:%s;Actual:%s",szKeyName, m_szCurrTestInfo, strLow.GetBuffer(),strHigh.GetBuffer(),szActual);
+			strCopy(m_ErrorReport.ErrorCode,szErrorCode);
+			m_ErrorReport.TestResult = FALSE;
+			m_ErrorReport.DisableSfcsLink = FALSE;
+		}
+		return;
+	}
+
+
+	if(strstr(lpszMessage, _T("<--Failed")) && m_ErrorReport.TestResult)
+	{
+		strCopy(m_ErrorReport.FailedTest, szFailTest);
+		strCopy(m_ErrorReport.ErrorDetail,_T("NULL"));
+		sprintf_s(m_ErrorReport.ErrorMsg,sizeof(m_ErrorReport.ErrorMsg),"Can't analyze the fail test message.");
+		strCopy(m_ErrorReport.ErrorCode,_T("T1060"));
+		m_ErrorReport.TestResult = FALSE;
+		m_ErrorReport.DisableSfcsLink = FALSE;
+	}
+	return;
+}
+
+LPSTR COemTest::SyncAntenna(XML_ANTENNA Antenna, BOOL ToSFCS)
+{
+	int AntennaIdx[4]={0};
+	int nCombine=0;
+	TCHAR szRtn[10]={0};
+
+	if(strcmp(Antenna.A,"1") == 0) AntennaIdx[0]=1;
+	if(strcmp(Antenna.B,"1") == 0) AntennaIdx[1]=1;
+	if(strcmp(Antenna.C,"1") == 0) AntennaIdx[2]=1;
+	if(strcmp(Antenna.D,"1") == 0) AntennaIdx[3]=1;
+
+	if(ToSFCS)
+	{
+		sprintf_s(szRtn,sizeof(szRtn),"%s%s%s%s",(AntennaIdx[0])? _T("1"):_T("") 
+			                                    ,(AntennaIdx[1])? _T("2"):_T("")
+												,(AntennaIdx[2])? _T("3"):_T("")
+												,(AntennaIdx[3])? _T("4"):_T(""));
+		return szRtn;
+	}else
+		nCombine = AntennaIdx[0] | (AntennaIdx[1] << 1) | (AntennaIdx[2] << 2) | (AntennaIdx[3] << 3);
+
+	if(nCombine == ANTENNA_A)
+		return _T("A");
+	else if(nCombine == ANTENNA_B)
+		return _T("B");
+	else if(nCombine == ANTENNA_C)
+		return _T("C");
+	else if(nCombine == ANTENNA_D)
+		return _T("D");
+	else if(nCombine == ANTENNA_AB)
+		return _T("AB");
+	else if(nCombine == ANTENNA_AC)
+		return _T("AC");
+	else if(nCombine == ANTENNA_AD)
+		return _T("AD");
+	else if(nCombine == ANTENNA_BC)
+		return _T("BC");
+	else if(nCombine == ANTENNA_BD)
+		return _T("BD");
+	else if(nCombine == ANTENNA_CD)
+		return _T("CD");
+	else if(nCombine == ANTENNA_ABC)
+		return _T("ABC");
+	else if(nCombine == ANTENNA_ABD)
+		return _T("ABD");
+	else if(nCombine == ANTENNA_ACD)
+		return _T("ACD");
+	else if(nCombine == ANTENNA_BCD)
+		return _T("BCD");
+	else if(nCombine == ANTENNA_ABCD)
+		return _T("ABCD");
+	else
+		return _T("NULL");
+}
+void COemTest::ExternalController()
+{
+	if(strcmp(g_GlobalInfo.CUSTOMER,"CAMBIUM") == 0) 
+	{
+		FILE *stream;
+		int FileNo;
+		long streamLength, ActuallyRead;
+		TCHAR *Content = NULL;
+		char szFileName[MAX_PATH]={0};
+
+		sprintf_s(szFileName,sizeof(szFileName),"%s%s",g_GlobalInfo.szLocalPath,_T("OEM\\Cambium\\Log\\TXCalDataLogFile.txt"));
+		if((stream = fopen(szFileName, _T("rb"))) != NULL)
+		{
+			ExportTestLog(" ================ Open TXCalDataLogFile.txt ======================");
+			FileNo = _fileno(stream);
+			streamLength = _filelength(FileNo);
+
+			Content = (TCHAR*)malloc((size_t)(streamLength+1));
+			memset(Content, 0x00, (streamLength+1));
+			fseek(stream, SEEK_SET, 0);
+			ActuallyRead = (long)fread(Content, sizeof(TCHAR), streamLength, stream);
+			fclose(stream) ;
+			ExportTestLog(Content);
+			ExportTestLog(" ================ Close TXCalDataLogFile.txt ======================");
+//			DeleteFile(szFileName);
+		}
+		if(Content)	free(Content);
+	}
+	return;
+}
+
+void COemTest::CreateErrorData(XML_DATA TestItem, LPSTR szErrorKey)
+{
+	TCHAR szTestType[32]={0};
+	if(m_eTestType == WIFI_EVM_TEST)
+		strCopy(szTestType,_T("EVM"));
+	else if(m_eTestType == WIFI_MASK_TEST)
+		strCopy(szTestType,_T("MASK"));
+	else if(m_eTestType == WIFI_RXPER_TEST)
+		strCopy(szTestType,_T("MASK"));
+	else if(m_eTestType == WIFI_RX_SWEEP_TEST)
+		strCopy(szTestType,_T("MASK"));
+	else
+		strCopy(szTestType,_T("UNKNOW"));
+
+	if(strcmp(m_ErrorReport.FailedTest,_T("Missing Test Data")) != NULL)
+	{
+		strCopy(m_ErrorReport.FailedTest, "Missing Test Data");
+		strCopy(m_ErrorReport.ErrorDetail,_T("NULL"));
+		sprintf_s(m_ErrorReport.ErrorMsg,sizeof(m_ErrorReport.ErrorMsg),"Type:%s,FREQ:%s,RATE:%s,BW:%s,ANT:%s;[Type : %s]",szTestType,TestItem.szFreq,TestItem.szDataRate,TestItem.szBandWidth,SyncAntenna(TestItem.Antenna),szErrorKey);
+		strCopy(m_ErrorReport.ErrorCode,_T("T089"));
+		m_ErrorReport.TestResult = FALSE;
+		m_ErrorReport.DisableSfcsLink = TRUE;
+	}
+	return;
+}
+void COemTest::CreateXmlData(funcGetMessage cbXmlMessage, XML_DATA TestItem, LPSTR szDataName, LPSTR szDataValue)
+{
+	if(strcmp(szDataValue,_T("")) == NULL) CreateErrorData(TestItem,szDataName);
+	CCommFunc::ExportTestMessage(cbXmlMessage, "<%s>%s</%s>", szDataName, szDataValue, szDataName);
+	return;
+}

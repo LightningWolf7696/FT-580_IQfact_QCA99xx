@@ -1,0 +1,19 @@
+#pragma once
+
+#include "../CommFunc.h"
+
+
+class CMakeTestResultLog
+{
+public:
+	CMakeTestResultLog(void);
+public:
+	~CMakeTestResultLog(void);
+
+public:
+	BOOL START(LPSTR szType, LPSTR szMode, LPSTR szLocation, ERRORREPORT ActualErrorReport, LPSTR lpszRunInfo);
+
+private:
+	BOOL CopyTestResultFile(LPSTR szSrcPath,LPSTR szDestPath,LPSTR szMessage);
+
+};

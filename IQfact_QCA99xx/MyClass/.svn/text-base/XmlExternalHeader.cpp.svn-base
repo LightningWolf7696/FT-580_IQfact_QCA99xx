@@ -1,0 +1,32 @@
+#include "../StdAfx.h"
+#include "XmlExternalHeader.h"
+
+
+CXmlExternalHeader::CXmlExternalHeader(void)
+{
+}
+
+CXmlExternalHeader::~CXmlExternalHeader(void)
+{
+
+}
+
+BOOL CXmlExternalHeader::START(LPSTR szXmlExtHeader, LPSTR lpszRunInfo)
+{
+	AFX_MANAGE_STATE(AfxGetStaticModuleState());	
+	char szData[MAX_BUFFER_SIZE]={0};
+	CString strXmlData="";
+
+	
+	sprintf_s(szData,sizeof(szData),"<IQMEASURE_VERSION>%s</IQMEASURE_VERSION>\n",g_GlobalInfo.szIQMeasure);
+	strXmlData += _T(szData);
+	sprintf_s(szData,sizeof(szData),"<IQTESTER_SERIAL_NUM>%s</IQTESTER_SERIAL_NUM>\n",g_GlobalInfo.szIQTesterName);
+	strXmlData += _T(szData);
+	sprintf_s(szData,sizeof(szData),"<IMAGE_VERSION>%s</IMAGE_VERSION>\n",g_GlobalInfo.szImageVersion);
+	strXmlData += _T(szData);
+	
+
+	sprintf_s(szXmlExtHeader,DLL_INFO_SIZE,"%s",strXmlData.GetBuffer());
+	return TRUE;
+}
+

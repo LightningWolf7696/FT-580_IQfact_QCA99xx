@@ -1,0 +1,17 @@
+#pragma once
+
+#include "../CommFunc.h"
+
+
+class CSfcsExternalData
+{
+public:
+	CSfcsExternalData(void);
+public:
+	~CSfcsExternalData(void);
+
+public:
+	BOOL START(LPSTR szSfcsExtData, LPSTR lpszRunInfo);
+
+
+};

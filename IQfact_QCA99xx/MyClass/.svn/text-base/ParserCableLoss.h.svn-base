@@ -1,0 +1,17 @@
+#pragma once
+
+#include "../CommFunc.h"
+
+
+class CParserCableLoss
+{
+public:
+	CParserCableLoss(void);
+public:
+	~CParserCableLoss(void);
+
+public:
+	BOOL START(LPSTR lpszRunInfo);
+
+
+};
